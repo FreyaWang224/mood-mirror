@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 情绪日记 Project Overview</title>
+  <style>
+    :root {
+      --ink: #20222a;
+      --muted: #687080;
+      --line: #dfe5ec;
+      --paper: #fffaf2;
+      --green: #7a9d87;
+      --blue: #6f92b7;
+      --rose: #c86d7f;
+      --amber: #d49a52;
+      --charcoal: #1f2b2f;
+      --shadow: 0 18px 46px rgba(36, 43, 52, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      background:
+        linear-gradient(90deg, rgba(31, 43, 47, 0.055) 1px, transparent 1px) 0 0 / 70px 70px,
+        linear-gradient(180deg, rgba(31, 43, 47, 0.045) 1px, transparent 1px) 0 0 / 70px 70px,
+        radial-gradient(circle at 12% 10%, rgba(212, 154, 82, 0.22), transparent 28%),
+        radial-gradient(circle at 88% 6%, rgba(111, 146, 183, 0.22), transparent 28%),
+        linear-gradient(140deg, #f7efe4 0%, #edf5f0 50%, #f6edf4 100%);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .shell {
+      width: min(1160px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 30px 0;
+    }
+
+    .surface {
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.78);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--charcoal);
+      color: #fff;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      gap: 28px;
+      align-items: end;
+      padding: 30px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(36px, 6vw, 64px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 720px;
+      margin: 16px 0 0;
+      color: #4f5664;
+      font-size: 17px;
+      line-height: 1.75;
+    }
+
+    .hero-card {
+      display: grid;
+      gap: 12px;
+    }
+
+    .metric {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.66);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 19px;
+    }
+
+    .section {
+      margin-top: 22px;
+      padding: 24px;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    p {
+      margin: 0;
+      color: #535b67;
+      line-height: 1.7;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .tag-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .tag {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(111, 146, 183, 0.16);
+      color: #405a76;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .flow-step {
+      position: relative;
+      min-height: 132px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.66);
+    }
+
+    .number {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 12px;
+      border-radius: 50%;
+      background: var(--charcoal);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .module-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .module-item {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .module-item b {
+      color: var(--ink);
+    }
+
+    .quote-box {
+      padding: 18px;
+      border-left: 4px solid var(--rose);
+      background: rgba(255, 255, 255, 0.68);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .file-links {
+      display: grid;
+      gap: 10px;
+    }
+
+    .file-link {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .file-link span {
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .flow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .module-item {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .shell {
+        width: min(100% - 22px, 1160px);
+        padding: 16px 0;
+      }
+
+      .hero,
+      .section {
+        padding: 18px;
+      }
+
+      .topbar,
+      .file-link {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <nav class="topbar" aria-label="Project links">
+      <div class="brand"><span class="mark">M</span>Mood Mirror</div>
+      <a href="ai-emotion-diary-prototype.html">Open Prototype</a>
+    </nav>
+
+    <header class="hero surface">
+      <div>
+        <p class="eyebrow">Project Overview</p>
+        <h1>AI 情绪日记</h1>
+        <p class="lead">这是一个面向学生和年轻人的 AI 情绪记录原型。用户先写下今日片段，系统再生成情绪分析、真实诗句和可视化共鸣卡，让日记从“记录”变成“被理解”。</p>
+      </div>
+      <div class="hero-card">
+        <div class="metric"><span>Prototype Type</span><strong>单页 HTML 可交互原型</strong></div>
+        <div class="metric"><span>Core Experience</span><strong>记录 → 分析 → 共鸣卡</strong></div>
+        <div class="metric"><span>Current Stage</span><strong>MVP / 课堂展示版</strong></div>
+      </div>
+    </header>
+
+    <section class="section surface">
+      <h2>1. 想法与定位</h2>
+      <div class="grid-2">
+        <article class="card">
+          <h3>产品想法</h3>
+          <p>用户写下今天发生的事，AI 帮助整理情绪，并用一句真实诗词和一张视觉意象图概括当天状态。</p>
+        </article>
+        <article class="card">
+          <h3>目标用户</h3>
+          <p>学生、年轻上班族，以及想记录情绪但不想写长篇日记的人。</p>
+        </article>
+        <article class="card">
+          <h3>产品定位</h3>
+          <p>不是心理诊断工具，而是轻量的情绪陪伴与自我观察工具。</p>
+        </article>
+        <article class="card">
+          <h3>第一版目标</h3>
+          <p>验证用户是否能顺利完成“写下心情 → 获得反馈 → 保存记录”的核心路径。</p>
+        </article>
+      </div>
+      <div class="tag-row">
+        <span class="tag">情绪记录</span>
+        <span class="tag">AI 分析</span>
+        <span class="tag">真实诗词</span>
+        <span class="tag">视觉共鸣卡</span>
+      </div>
+    </section>
+
+    <section class="section surface">
+      <h2>2. 用户流程</h2>
+      <div class="flow">
+        <article class="flow-step"><span class="number">1</span><h3>进入页面</h3><p>看到产品名称、流程提示和今日记录入口。</p></article>
+        <article class="flow-step"><span class="number">2</span><h3>选择心情</h3><p>从开心、平静、焦虑、难过、疲惫、生气中选择一种。</p></article>
+        <article class="flow-step"><span class="number">3</span><h3>写下片段</h3><p>输入今天发生的事情或情绪原因。</p></article>
+        <article class="flow-step"><span class="number">4</span><h3>生成结果</h3><p>系统展示 AI 分析、真实诗句和视觉意象卡。</p></article>
+        <article class="flow-step"><span class="number">5</span><h3>保存日记</h3><p>用户确认结果后保存到历史记录。</p></article>
+      </div>
+    </section>
+
+    <section class="section surface">
+      <h2>3. 业务模块拆解</h2>
+      <div class="module-list">
+        <div class="module-item"><b>Module 1: App Header</b><p>展示产品名称、定位和当前原型目标，让用户理解这是一个情绪记录工具。</p></div>
+        <div class="module-item"><b>Module 2: Mood Selector</b><p>提供六种基础情绪选项，作为后续分析、诗句匹配和图片切换的输入。</p></div>
+        <div class="module-item"><b>Module 3: Diary Input</b><p>让用户写下今天的事件或感受，是 AI 分析的主要上下文。</p></div>
+        <div class="module-item"><b>Module 4: AI Emotion Analysis</b><p>模拟生成情绪总结、可能原因、温柔建议和关键词。</p></div>
+        <div class="module-item"><b>Module 5: Resonance Card</b><p>将分析结果转化成真实诗句、情绪意象和 AI 生成图片，形成产品亮点。</p></div>
+        <div class="module-item"><b>Module 6: Diary History</b><p>使用浏览器本地存储保存最近记录，用来展示闭环体验。</p></div>
+        <div class="module-item"><b>Module 7: Prototype Comments</b><p>记录当前原型的设计判断、限制和下一步迭代方向。</p></div>
+      </div>
+    </section>
+
+    <section class="section surface">
+      <h2>4. AI 参与点</h2>
+      <div class="grid-3">
+        <article class="card">
+          <h3>情绪分析</h3>
+          <p>根据用户选择的心情和日记文本，输出情绪总结、可能原因和温柔建议。</p>
+        </article>
+        <article class="card">
+          <h3>诗句匹配</h3>
+          <p>当前版本使用公版古诗词库，按情绪匹配真实诗句，降低纯 AI 句子的生硬感。</p>
+        </article>
+        <article class="card">
+          <h3>视觉意象</h3>
+          <p>当前版本使用一张 AI 生成的六情绪图集，按心情裁切显示对应画面。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section surface">
+      <h2>5. MVP 范围</h2>
+      <div class="grid-2">
+        <article class="card">
+          <h3>第一版包含</h3>
+          <p>情绪选择、日记输入、结果生成、共鸣卡展示、历史记录、原型评论。</p>
+        </article>
+        <article class="card">
+          <h3>第一版暂不包含</h3>
+          <p>登录注册、真实后端数据库、真实 AI API、心理诊断、用户社区、复杂数据可视化。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section surface">
+      <h2>6. Prototype Comments</h2>
+      <div class="grid-2">
+        <article class="quote-box">
+          <h3>Comment 1</h3>
+          <p>原型已从“左右同时展示”调整为“先记录、再生成结果”的真实使用流程，更接近最终产品体验。</p>
+        </article>
+        <article class="quote-box">
+          <h3>Comment 2</h3>
+          <p>真实诗词提供文化质感，避免结果过于模板化或人机感过重。</p>
+        </article>
+        <article class="quote-box">
+          <h3>Comment 3</h3>
+          <p>AI 生成图片作为视觉共鸣卡的主体，但当前仍是固定图集裁切，不是每篇日记实时生成。</p>
+        </article>
+        <article class="quote-box">
+          <h3>Comment 4</h3>
+          <p>下一版可以接入真实模型，让分析内容、诗句匹配和视觉意象更贴合具体文本。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section surface">
+      <h2>7. 文件维护方式</h2>
+      <div class="file-links">
+        <a class="file-link" href="ai-emotion-diary-prototype.html"><strong>ai-emotion-diary-prototype.html</strong><span>产品交互原型</span></a>
+        <a class="file-link" href="project-overview.html"><strong>project-overview.html</strong><span>项目 overview 与业务拆解</span></a>
+        <div class="file-link"><strong>assets/mood-visual-sheet.png</strong><span>AI 生成的六情绪视觉图集</span></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
