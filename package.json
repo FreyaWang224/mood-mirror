@@ -12,7 +12,7 @@
     "db:migrate:local": "wrangler d1 migrations apply emotion-diary-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply emotion-diary-db --remote",
     "test": "npm run test:legacy && vitest run",
-    "test:legacy": "node prototype.test.mjs && node overview.test.mjs && node public.test.mjs"
+    "test:legacy": "node prototype.test.mjs && node overview.test.mjs && node public.test.mjs && node test/schema.test.mjs"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "latest",
