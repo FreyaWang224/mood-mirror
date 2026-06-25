@@ -14,7 +14,7 @@
     {
       "binding": "DB",
       "database_name": "emotion-diary-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "fe1a9368-33f6-447f-97e1-3df36e6d5663",
       "migrations_dir": "migrations"
     }
   ]
