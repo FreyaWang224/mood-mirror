@@ -1,4 +1,5 @@
 import { env, SELF } from "cloudflare:test";
+import type { Env } from "../src/types";
 
 const api = (path: string, init?: RequestInit) =>
   SELF.fetch(`https://example.com${path}`, init);
@@ -81,61 +82,70 @@ describe("diary entries API", () => {
     expect(entry.updatedAt).toBe(entry.createdAt);
   });
 
-  it("lists entries in descending creation order", async () => {
-    await env.DB.prepare(
+  it("lists only the 50 newest entries in descending creation order", async () => {
+    const insert = env.DB.prepare(
       `INSERT INTO entries
         (id, content, mood, intensity, ai_response, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    )
-      .bind(
-        "older",
-        "较早",
-        "sad",
-        2,
+    );
+    const entries = Array.from({ length: 51 }, (_, index) => {
+      const id = `entry-${index.toString().padStart(2, "0")}`;
+      const createdAt = new Date(
+        Date.UTC(2026, 0, 1, 0, index),
+      ).toISOString();
+      return insert.bind(
+        id,
+        `日记 ${index}`,
+        "calm",
+        3,
         null,
-        "2026-01-01T00:00:00.000Z",
-        "2026-01-01T00:00:00.000Z",
-      )
-      .run();
-    await env.DB.prepare(
-      `INSERT INTO entries
-        (id, content, mood, intensity, ai_response, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    )
-      .bind(
-        "newer",
-        "较晚",
-        "happy",
-        5,
-        "很好",
-        "2026-01-02T00:00:00.000Z",
-        "2026-01-02T00:00:00.000Z",
-      )
-      .run();
+        createdAt,
+        createdAt,
+      );
+    });
+    await env.DB.batch(entries);
 
     const response = await api("/api/entries");
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual([
+    const body = await response.json<Array<Record<string, unknown>>>();
+    expect(body).toHaveLength(50);
+    expect(body.map((entry) => entry.id)).toEqual(
+      Array.from(
+        { length: 50 },
+        (_, index) => `entry-${(50 - index).toString().padStart(2, "0")}`,
+      ),
+    );
+  });
+
+  it.each([
+    [
+      "minimum intensity with maximum content and AI response",
       {
-        id: "newer",
-        content: "较晚",
+        content: "x".repeat(400),
+        mood: "calm",
+        intensity: 1,
+        aiResponse: "y".repeat(2000),
+      },
+    ],
+    [
+      "maximum intensity",
+      {
+        content: "边界",
         mood: "happy",
         intensity: 5,
-        aiResponse: "很好",
-        createdAt: "2026-01-02T00:00:00.000Z",
-        updatedAt: "2026-01-02T00:00:00.000Z",
-      },
-      {
-        id: "older",
-        content: "较早",
-        mood: "sad",
-        intensity: 2,
         aiResponse: null,
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
       },
-    ]);
+    ],
+  ])("accepts valid boundaries: %s", async (_name, body) => {
+    const response = await api("/api/entries", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject(body);
   });
 
   it("gets a single entry", async () => {
@@ -193,14 +203,21 @@ describe("diary entries API", () => {
   it.each([
     ["blank content", { ...validInput, content: "   " }],
     ["content over 400 characters", { ...validInput, content: "x".repeat(401) }],
+    ["missing content", { mood: "calm", intensity: 3 }],
+    ["non-string content", { ...validInput, content: 123 }],
     ["unknown mood", { ...validInput, mood: "excited" }],
+    ["missing mood", { content: "正文", intensity: 3 }],
+    ["non-string mood", { ...validInput, mood: 123 }],
     ["non-integer intensity", { ...validInput, intensity: 2.5 }],
     ["intensity below range", { ...validInput, intensity: 0 }],
     ["intensity above range", { ...validInput, intensity: 6 }],
+    ["missing intensity", { content: "正文", mood: "calm" }],
+    ["non-number intensity", { ...validInput, intensity: "3" }],
     [
       "aiResponse over 2000 characters",
       { ...validInput, aiResponse: "x".repeat(2001) },
     ],
+    ["non-string aiResponse", { ...validInput, aiResponse: 123 }],
     ["non-object body", []],
   ])(
     "rejects invalid input: %s",
@@ -266,5 +283,19 @@ describe("diary entries API", () => {
     expect(response.status).toBe(404);
     expect(response.headers.get("content-type")).toContain("application/json");
     expect(await response.json()).toEqual({ error: "Not found" });
+  });
+
+  it("serves non-API requests through the ASSETS binding", async () => {
+    const request = new Request("https://example.com/");
+    const [response, assetResponse] = await Promise.all([
+      SELF.fetch(request.clone()),
+      (env as Env).ASSETS.fetch(request),
+    ]);
+
+    expect(response.status).toBe(assetResponse.status);
+    expect(response.headers.get("content-type")).toBe(
+      assetResponse.headers.get("content-type"),
+    );
+    expect(await response.text()).toBe(await assetResponse.text());
   });
 });
