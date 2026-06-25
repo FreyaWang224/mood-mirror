@@ -1073,7 +1073,7 @@
       <div class="panel-title">
         <div>
           <h2 id="historyTitle">历史日记</h2>
-          <p class="hint">保存在当前浏览器中，适合原型演示。</p>
+          <p class="hint">日记将保存到云端，可在历史日记中查看。</p>
         </div>
         <button class="secondary-btn" id="clearBtn" type="button">清空历史</button>
       </div>
@@ -1186,6 +1186,7 @@
     const resultStep = document.querySelector("#step-result");
     let selectedMood = "calm";
     let latestEntry = null;
+    let isSaving = false;
 
     const saveStatus = document.createElement("p");
     saveStatus.className = "hint";
@@ -1234,9 +1235,11 @@
         source: profile.source,
         metaphorTitle: profile.metaphorTitle
       };
-      saveBtn.textContent = "保存日记";
-      saveStatus.textContent = "";
-      saveBtn.disabled = false;
+      if (!isSaving) {
+        saveBtn.textContent = "保存日记";
+        saveStatus.textContent = "";
+      }
+      saveBtn.disabled = isSaving;
       setResultReady(true);
       resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -1323,22 +1326,37 @@
     });
 
     saveBtn.addEventListener("click", async () => {
-      if (!latestEntry) {
+      if (!latestEntry || isSaving) {
         return;
       }
+      const entryToSave = latestEntry;
+      let saveSucceeded = false;
+      isSaving = true;
       saveBtn.disabled = true;
       saveBtn.textContent = "保存中...";
       saveStatus.textContent = "";
       try {
-        await saveEntry(latestEntry);
+        await saveEntry(entryToSave);
         await refreshHistory();
-        saveBtn.textContent = "已保存";
-        saveStatus.textContent = "日记保存成功。";
+        saveSucceeded = true;
+        if (latestEntry === entryToSave) {
+          saveBtn.textContent = "已保存";
+          saveStatus.textContent = "日记保存成功。";
+        }
       } catch (error) {
-        saveBtn.disabled = false;
-        saveBtn.textContent = "保存日记";
-        saveStatus.textContent = "保存失败，请稍后重试。";
+        if (latestEntry === entryToSave) {
+          saveBtn.textContent = "保存日记";
+          saveStatus.textContent = "保存失败，请稍后重试。";
+        }
         console.error(error);
+      } finally {
+        isSaving = false;
+        const hasNewerEntry = latestEntry !== entryToSave;
+        saveBtn.disabled = saveSucceeded && !hasNewerEntry;
+        if (hasNewerEntry) {
+          saveBtn.textContent = "保存日记";
+          saveStatus.textContent = "";
+        }
       }
     });
 

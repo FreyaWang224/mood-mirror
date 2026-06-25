@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
 const html = readFileSync(new URL("./public/index.html", import.meta.url), "utf8");
+const vitestConfig = readFileSync(
+  new URL("./vitest.config.mts", import.meta.url),
+  "utf8",
+);
 
 for (const text of [
   "AI 情绪日记",
@@ -66,17 +70,47 @@ assert.match(
 );
 assert.match(
   html,
-  /saveBtn\.addEventListener\(["']click["'],\s*async\s*\(\)\s*=>[\s\S]*?await saveEntry\(latestEntry\)[\s\S]*?await refreshHistory\(\)/,
+  /saveBtn\.addEventListener\(["']click["'],\s*async\s*\(\)\s*=>[\s\S]*?const entryToSave\s*=\s*latestEntry[\s\S]*?await saveEntry\(entryToSave\)[\s\S]*?await refreshHistory\(\)/,
 );
 assert.match(
   html,
   /function applyProfile\s*\([\s\S]*?saveBtn\.textContent\s*=\s*["']保存日记["'][\s\S]*?saveStatus\.textContent\s*=\s*["']["']/,
+);
+assert.match(html, /let isSaving\s*=\s*false/);
+assert.match(
+  html,
+  /function applyProfile\s*\([\s\S]*?saveBtn\.disabled\s*=\s*isSaving/,
+  "Generating another result during a save must not re-enable the save button.",
+);
+assert.match(
+  html,
+  /saveBtn\.addEventListener\(["']click["'],\s*async\s*\(\)\s*=>\s*\{\s*if\s*\(\s*!latestEntry\s*\|\|\s*isSaving\s*\)/,
+  "The save click handler must reject duplicate clicks while a request is pending.",
+);
+assert.match(
+  html,
+  /isSaving\s*=\s*true[\s\S]*?try\s*\{[\s\S]*?await saveEntry\([\s\S]*?finally\s*\{[\s\S]*?isSaving\s*=\s*false[\s\S]*?saveBtn\.disabled\s*=/,
+  "Saving state and button availability must be restored in finally.",
+);
+assert.ok(
+  html.includes("日记将保存到云端，可在历史日记中查看。"),
+  "History copy must accurately describe cloud persistence.",
+);
+assert.ok(
+  !html.includes("保存在当前浏览器中"),
+  "History copy must not claim entries are stored in the browser.",
 );
 assert.match(
   html,
   /clearBtn\.addEventListener\(["']click["'],\s*refreshHistory\)/,
 );
 assert.match(html, /refreshHistory\(\);\s*<\/script>/);
+
+assert.match(
+  vitestConfig,
+  /include:\s*\[\s*["']test\/\*\*\/\*\.test\.ts["']\s*\]/,
+  "Vitest Workers must only collect TypeScript API tests.",
+);
 
 assert.match(html, /item\.content/);
 assert.match(html, /item\.mood/);
