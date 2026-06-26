@@ -34,23 +34,17 @@ npm test
 
 ## Cloudflare 配置与部署
 
-先登录并确认当前账号：
+当前项目已经绑定线上 D1 数据库：
+
+- database_name: `emotion-diary-db`
+- database_id: `fe1a9368-33f6-447f-97e1-3df36e6d5663`
+- 已部署地址：<https://ai-emotion-diary.freya-lab.workers.dev>
+
+正常继续部署时，先登录并确认当前账号：
 
 ```bash
 npx wrangler login
 npx wrangler whoami
-```
-
-创建线上 D1 数据库：
-
-```bash
-npx wrangler d1 create emotion-diary-db
-```
-
-命令会返回 `database_id`。将其替换到 `wrangler.jsonc` 中的占位 UUID：
-
-```text
-00000000-0000-0000-0000-000000000000
 ```
 
 随后执行线上迁移并部署：
@@ -60,9 +54,26 @@ npm run db:migrate:remote
 npm run deploy
 ```
 
+只有在更换 Cloudflare 账号、重建生产环境或创建另一套环境时，才需要新建 D1 数据库：
+
+```bash
+npx wrangler d1 create emotion-diary-db
+```
+
+命令会返回新的 `database_id`，再把 `wrangler.jsonc` 中的 `database_id` 替换为新值。
+
 修改 `public/index.html` 或 `src/` 下的代码后，需要再次运行 `npm run deploy` 才会更新线上版本。
 
 原始原型保留在 `ai-emotion-diary-prototype.html`，实际部署入口是 `public/index.html`。
+
+## 安全状态
+
+当前线上版本是公开 demo：任何能访问地址的人都可以调用日记 API。不要在加入访问保护前保存真实隐私内容。
+
+下一步建议二选一：
+
+- 快速方案：在 Worker API 上加一个访问口令，前端输入后再读写日记。
+- 更稳方案：用 Cloudflare Access 保护整个站点，通过邮箱或身份提供商登录后访问。
 
 ## Secret
 

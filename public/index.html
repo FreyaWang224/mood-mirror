@@ -1305,9 +1305,11 @@
       clearBtn.disabled = true;
       try {
         renderHistory(await loadHistory());
+        return true;
       } catch (error) {
         setHistoryMessage("历史读取失败，请稍后重试。");
         console.error(error);
+        return false;
       } finally {
         clearBtn.disabled = false;
       }
@@ -1337,11 +1339,14 @@
       saveStatus.textContent = "";
       try {
         await saveEntry(entryToSave);
-        await refreshHistory();
         saveSucceeded = true;
         if (latestEntry === entryToSave) {
           saveBtn.textContent = "已保存";
           saveStatus.textContent = "日记保存成功。";
+        }
+        const historyRefreshed = await refreshHistory();
+        if (!historyRefreshed && latestEntry === entryToSave) {
+          saveStatus.textContent = "日记已保存，但历史列表刷新失败，请点击刷新历史。";
         }
       } catch (error) {
         if (latestEntry === entryToSave) {

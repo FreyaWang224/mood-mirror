@@ -42,6 +42,10 @@ assert.ok(
   "Expected a visible Chinese save failure message.",
 );
 assert.ok(
+  html.includes("日记已保存，但历史列表刷新失败，请点击刷新历史。"),
+  "Expected save success to remain visible when only history refresh fails.",
+);
+assert.ok(
   html.includes("历史读取失败，请稍后重试。"),
   "Expected a visible Chinese history loading failure message.",
 );
@@ -71,6 +75,16 @@ assert.match(
 assert.match(
   html,
   /saveBtn\.addEventListener\(["']click["'],\s*async\s*\(\)\s*=>[\s\S]*?const entryToSave\s*=\s*latestEntry[\s\S]*?await saveEntry\(entryToSave\)[\s\S]*?await refreshHistory\(\)/,
+);
+assert.match(
+  html,
+  /await saveEntry\(entryToSave\);\s*saveSucceeded\s*=\s*true[\s\S]*?const historyRefreshed\s*=\s*await refreshHistory\(\);[\s\S]*?if\s*\(\s*!historyRefreshed/,
+  "A successful POST must mark the entry saved before refreshing history so refresh failures cannot allow duplicate saves.",
+);
+assert.match(
+  html,
+  /async function refreshHistory\s*\([\s\S]*?return true;[\s\S]*?catch\s*\(error\)[\s\S]*?return false;/,
+  "History refresh must report failure to callers without throwing away the saved state.",
 );
 assert.match(
   html,
