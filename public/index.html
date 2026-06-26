@@ -1187,6 +1187,7 @@
     let selectedMood = "calm";
     let latestEntry = null;
     let isSaving = false;
+    const accessTokenStorageKey = "diaryAccessToken";
 
     const saveStatus = document.createElement("p");
     saveStatus.className = "hint";
@@ -1244,10 +1245,35 @@
       resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
+    function getAccessToken() {
+      const storedToken = sessionStorage.getItem("diaryAccessToken");
+      if (storedToken) {
+        return storedToken;
+      }
+
+      const token = window.prompt("请输入日记访问口令");
+      const trimmedToken = token ? token.trim() : "";
+      if (trimmedToken) {
+        sessionStorage.setItem("diaryAccessToken", trimmedToken);
+      }
+      return trimmedToken;
+    }
+
+    function handleUnauthorized() {
+      sessionStorage.removeItem("diaryAccessToken");
+      throw new Error("访问口令不正确，请重新输入。");
+    }
+
     async function loadHistory() {
       const response = await fetch("/api/entries", {
-        headers: { accept: "application/json" }
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${getAccessToken()}`
+        }
       });
+      if (response.status === 401) {
+        handleUnauthorized();
+      }
       if (!response.ok) {
         throw new Error("读取历史失败");
       }
@@ -1257,7 +1283,10 @@
     async function saveEntry(entry) {
       const response = await fetch("/api/entries", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${getAccessToken()}`
+        },
         body: JSON.stringify({
           content: entry.diary,
           mood: entry.mood,
@@ -1265,6 +1294,9 @@
           aiResponse: entry.note
         })
       });
+      if (response.status === 401) {
+        handleUnauthorized();
+      }
       if (!response.ok) {
         throw new Error("保存失败");
       }
@@ -1308,6 +1340,9 @@
         return true;
       } catch (error) {
         setHistoryMessage("历史读取失败，请稍后重试。");
+        if (error instanceof Error && error.message === "访问口令不正确，请重新输入。") {
+          setHistoryMessage(error.message);
+        }
         console.error(error);
         return false;
       } finally {
@@ -1351,7 +1386,9 @@
       } catch (error) {
         if (latestEntry === entryToSave) {
           saveBtn.textContent = "保存日记";
-          saveStatus.textContent = "保存失败，请稍后重试。";
+          saveStatus.textContent = error instanceof Error && error.message === "访问口令不正确，请重新输入。"
+            ? error.message
+            : "保存失败，请稍后重试。";
         }
         console.error(error);
       } finally {

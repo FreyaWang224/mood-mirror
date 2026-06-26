@@ -68,12 +68,23 @@ npx wrangler d1 create emotion-diary-db
 
 ## 安全状态
 
-当前线上版本是公开 demo：任何能访问地址的人都可以调用日记 API。不要在加入访问保护前保存真实隐私内容。
+日记 API 使用 `DIARY_ACCESS_TOKEN` 口令保护。`/api/health` 仍然公开用于健康检查；`/api/entries` 和单条日记读写都需要浏览器带上正确口令。
 
-下一步建议二选一：
+本地开发时，在项目根目录创建 `.dev.vars`：
 
-- 快速方案：在 Worker API 上加一个访问口令，前端输入后再读写日记。
-- 更稳方案：用 Cloudflare Access 保护整个站点，通过邮箱或身份提供商登录后访问。
+```dotenv
+DIARY_ACCESS_TOKEN=your-local-token
+```
+
+线上部署前，将同名 Secret 写入 Cloudflare：
+
+```bash
+npx wrangler secret put DIARY_ACCESS_TOKEN
+```
+
+第一次打开页面或口令失效时，浏览器会提示输入“日记访问口令”。口令只保存在当前浏览器会话的 `sessionStorage` 中；关闭标签页或浏览器后可能需要重新输入。
+
+这不是完整账号系统。如果以后要长期存放真实隐私内容，建议升级到 Cloudflare Access，用邮箱或身份提供商保护整个站点。
 
 ## Secret
 

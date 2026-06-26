@@ -9,9 +9,12 @@ export default defineConfig({
   plugins: [
     cloudflareTest({
       wrangler: {
-        configPath: "./wrangler.jsonc",
+      configPath: "./wrangler.jsonc",
       },
       miniflare: {
+        bindings: {
+          DIARY_ACCESS_TOKEN: "test-access-token",
+        },
         d1Databases: ["DB"],
       },
     }),

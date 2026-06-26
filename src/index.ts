@@ -28,6 +28,26 @@ function empty(status: number): Response {
   });
 }
 
+function unauthorized(): Response {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: {
+      ...jsonHeaders,
+      "www-authenticate": "Bearer",
+    },
+  });
+}
+
+function isAuthorized(request: Request, env: Env): boolean {
+  const expectedToken = env.DIARY_ACCESS_TOKEN;
+  const authorization = request.headers.get("authorization");
+  return (
+    typeof expectedToken === "string" &&
+    expectedToken.length > 0 &&
+    authorization === `Bearer ${expectedToken}`
+  );
+}
+
 async function readEntryInput(request: Request) {
   try {
     return validateEntryInput(await request.json());
@@ -51,6 +71,10 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   }
 
   if (pathname === "/api/entries") {
+    if (!isAuthorized(request, env)) {
+      return unauthorized();
+    }
+
     if (request.method === "GET") {
       return json(await listEntries(env.DB));
     }
@@ -63,6 +87,10 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 
   const match = pathname.match(/^\/api\/entries\/([^/]+)$/);
   if (match) {
+    if (!isAuthorized(request, env)) {
+      return unauthorized();
+    }
+
     const id = match[1];
 
     if (request.method === "GET") {

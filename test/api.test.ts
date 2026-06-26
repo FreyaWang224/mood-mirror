@@ -4,6 +4,19 @@ import type { Env } from "../src/types";
 const api = (path: string, init?: RequestInit) =>
   SELF.fetch(`https://example.com${path}`, init);
 
+const accessToken = "test-access-token";
+const authHeaders = { authorization: `Bearer ${accessToken}` };
+
+function withAuth(init: RequestInit = {}): RequestInit {
+  return {
+    ...init,
+    headers: {
+      ...authHeaders,
+      ...(init.headers ?? {}),
+    },
+  };
+}
+
 const validInput = {
   content: "  今天的风很舒服。  ",
   mood: "calm",
@@ -16,7 +29,7 @@ async function createEntry(
 ): Promise<Record<string, unknown>> {
   const response = await api("/api/entries", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { ...authHeaders, "content-type": "application/json" },
     body: JSON.stringify(input),
   });
 
@@ -57,10 +70,27 @@ describe("diary entries API", () => {
     expect(await response.json()).toEqual({ ok: true });
   });
 
+  it("requires a bearer token for diary entries", async () => {
+    const response = await api("/api/entries");
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toBe("Bearer");
+    expect(await response.json()).toEqual({ error: "Unauthorized" });
+  });
+
+  it("rejects an incorrect bearer token for diary entries", async () => {
+    const response = await api("/api/entries", {
+      headers: { authorization: "Bearer wrong-token" },
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "Unauthorized" });
+  });
+
   it("creates a valid entry with a UUID and camelCase fields", async () => {
     const response = await api("/api/entries", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { ...authHeaders, "content-type": "application/json" },
       body: JSON.stringify(validInput),
     });
 
@@ -105,7 +135,7 @@ describe("diary entries API", () => {
     });
     await env.DB.batch(entries);
 
-    const response = await api("/api/entries");
+    const response = await api("/api/entries", withAuth());
 
     expect(response.status).toBe(200);
     const body = await response.json<Array<Record<string, unknown>>>();
@@ -140,7 +170,7 @@ describe("diary entries API", () => {
   ])("accepts valid boundaries: %s", async (_name, body) => {
     const response = await api("/api/entries", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { ...authHeaders, "content-type": "application/json" },
       body: JSON.stringify(body),
     });
 
@@ -151,7 +181,7 @@ describe("diary entries API", () => {
   it("gets a single entry", async () => {
     const entry = await createEntry();
 
-    const response = await api(`/api/entries/${entry.id}`);
+    const response = await api(`/api/entries/${entry.id}`, withAuth());
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(entry);
@@ -162,7 +192,7 @@ describe("diary entries API", () => {
 
     const response = await api(`/api/entries/${entry.id}`, {
       method: "PUT",
-      headers: { "content-type": "application/json" },
+      headers: { ...authHeaders, "content-type": "application/json" },
       body: JSON.stringify({
         content: "  修改后的正文  ",
         mood: "happy",
@@ -191,11 +221,12 @@ describe("diary entries API", () => {
 
     const removed = await api(`/api/entries/${entry.id}`, {
       method: "DELETE",
+      headers: authHeaders,
     });
     expect(removed.status).toBe(204);
     expect(await removed.text()).toBe("");
 
-    const missing = await api(`/api/entries/${entry.id}`);
+    const missing = await api(`/api/entries/${entry.id}`, withAuth());
     expect(missing.status).toBe(404);
     expect(await missing.json()).toEqual({ error: "Not found" });
   });
@@ -227,7 +258,7 @@ describe("diary entries API", () => {
     ) => {
       const response = await api("/api/entries", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { ...authHeaders, "content-type": "application/json" },
         body: JSON.stringify(body),
       });
 
@@ -239,7 +270,7 @@ describe("diary entries API", () => {
   it("returns 400 rather than 500 for malformed JSON", async () => {
     const response = await api("/api/entries", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { ...authHeaders, "content-type": "application/json" },
       body: "{",
     });
 
@@ -248,7 +279,7 @@ describe("diary entries API", () => {
   });
 
   it("returns 404 for missing entries", async () => {
-    const response = await api("/api/entries/missing");
+    const response = await api("/api/entries/missing", withAuth());
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: "Not found" });
@@ -263,7 +294,10 @@ describe("diary entries API", () => {
   ])(
     "returns 405 for unsupported %s %s",
     async (method: string, path: string) => {
-      const response = await api(path, { method });
+      const response = await api(
+        path,
+        path.startsWith("/api/entries") ? withAuth({ method }) : { method },
+      );
 
       expect(response.status).toBe(405);
       expect(await response.json()).toEqual({ error: "Method not allowed" });

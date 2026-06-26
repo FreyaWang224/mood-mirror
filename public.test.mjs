@@ -35,8 +35,19 @@ assert.ok(
 assert.match(html, /async function loadHistory\s*\(/);
 assert.match(html, /async function saveEntry\s*\(/);
 assert.match(html, /async function refreshHistory\s*\(/);
+assert.match(html, /function getAccessToken\s*\(/);
+assert.match(html, /sessionStorage\.getItem\(["']diaryAccessToken["']\)/);
+assert.match(html, /sessionStorage\.setItem\(["']diaryAccessToken["']/);
+assert.match(html, /sessionStorage\.removeItem\(["']diaryAccessToken["']\)/);
+assert.match(html, /window\.prompt\(["']请输入日记访问口令["']\)/);
 assert.match(html, /fetch\(["']\/api\/entries["']/);
+assert.match(html, /authorization:\s*`\s*Bearer \$\{getAccessToken\(\)\}\s*`/);
 assert.match(html, /response\.ok/);
+assert.match(html, /response\.status\s*===\s*401/);
+assert.ok(
+  html.includes("访问口令不正确，请重新输入。"),
+  "Expected a visible Chinese access-token failure message.",
+);
 assert.ok(
   html.includes("保存失败，请稍后重试。"),
   "Expected a visible Chinese save failure message.",
