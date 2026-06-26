@@ -1,2 +1,10 @@
 .worktrees/
 .superpowers/
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+coverage/
+worker-configuration.d.ts
