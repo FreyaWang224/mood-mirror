@@ -1,4 +1,11 @@
 import {
+  AiServiceError,
+  AiServiceNotConfiguredError,
+  analyzeDiary,
+  InvalidAnalysisInputError,
+  validateAnalysisInput,
+} from "./ai";
+import {
   createEntry,
   deleteEntry,
   getEntry,
@@ -59,6 +66,20 @@ async function readEntryInput(request: Request) {
   }
 }
 
+async function readAnalysisInput(request: Request) {
+  try {
+    return validateAnalysisInput(await request.json());
+  } catch (error) {
+    if (
+      error instanceof InvalidAnalysisInputError ||
+      error instanceof SyntaxError
+    ) {
+      throw new InvalidAnalysisInputError();
+    }
+    throw error;
+  }
+}
+
 async function handleApi(request: Request, env: Env): Promise<Response> {
   const { pathname } = new URL(request.url);
 
@@ -68,6 +89,19 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     }
     await env.DB.prepare("SELECT 1").first();
     return json({ ok: true });
+  }
+
+  if (pathname === "/api/analyze") {
+    if (!isAuthorized(request, env)) {
+      return unauthorized();
+    }
+
+    if (request.method !== "POST") {
+      return json({ error: "Method not allowed" }, 405);
+    }
+
+    const input = await readAnalysisInput(request);
+    return json(await analyzeDiary(env, input));
   }
 
   if (pathname === "/api/entries") {
@@ -129,6 +163,15 @@ export default {
     } catch (error) {
       if (error instanceof InvalidEntryError) {
         return json({ error: "Invalid entry" }, 400);
+      }
+      if (error instanceof InvalidAnalysisInputError) {
+        return json({ error: "Invalid analysis request" }, 400);
+      }
+      if (error instanceof AiServiceNotConfiguredError) {
+        return json({ error: "AI service not configured" }, 503);
+      }
+      if (error instanceof AiServiceError) {
+        return json({ error: "AI service failed" }, 502);
       }
 
       console.error("API request failed", error);

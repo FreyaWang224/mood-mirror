@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   DIARY_ACCESS_TOKEN?: string;
+  DEEPSEEK_API_KEY?: string;
 }
 
 export type Mood =
@@ -27,4 +28,23 @@ export interface EntryInput {
   mood: Mood;
   intensity: number;
   aiResponse?: string | null;
+}
+
+export interface AnalysisInput {
+  content: string;
+  mood: Mood;
+}
+
+export interface AnalysisResult {
+  mood: Mood;
+  companion: string;
+  summary: string;
+  reason: string;
+  advice: string;
+  keywords: string;
+  quote: string;
+  source: string;
+  metaphorTitle: string;
+  metaphorText: string;
+  planetIndex: number;
 }

@@ -1,4 +1,5 @@
 import { env, SELF } from "cloudflare:test";
+import { afterEach, expect, vi } from "vitest";
 import type { Env } from "../src/types";
 
 const api = (path: string, init?: RequestInit) =>
@@ -61,6 +62,10 @@ beforeEach(async () => {
   await env.DB.prepare("DELETE FROM entries").run();
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("diary entries API", () => {
   it("reports a healthy D1 binding", async () => {
     const response = await api("/api/health");
@@ -85,6 +90,88 @@ describe("diary entries API", () => {
 
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ error: "Unauthorized" });
+  });
+
+  it("requires a bearer token for AI analysis", async () => {
+    const response = await api("/api/analyze", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: "今天有点累", mood: "tired" }),
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toBe("Bearer");
+    expect(await response.json()).toEqual({ error: "Unauthorized" });
+  });
+
+  it("validates AI analysis input", async () => {
+    const response = await api("/api/analyze", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ content: " ", mood: "sparkly" }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid analysis request" });
+  });
+
+  it("returns a normalized DeepSeek analysis", async () => {
+    const deepSeekFetch = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                mood: "calm",
+                companion: "我读到了你给自己的呼吸。",
+                summary: "你今天整体更接近平静。",
+                reason: "你在把事情慢慢放回合适的位置。",
+                advice: "今晚可以少安排一点。",
+                keywords: "平静、整理、呼吸",
+                quote: "行到水穷处，坐看云起时。",
+                source: "王维《终南别业》",
+                metaphorTitle: "今日意象：月光下的小湖",
+                metaphorText: "水面并非没有波纹，只是终于能够照见月亮。",
+              }),
+            },
+          },
+        ],
+      }),
+    } as Response);
+
+    const response = await api("/api/analyze", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ content: "今天终于松了一口气", mood: "calm" }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      mood: "calm",
+      companion: "我读到了你给自己的呼吸。",
+      summary: "你今天整体更接近平静。",
+      reason: "你在把事情慢慢放回合适的位置。",
+      advice: "今晚可以少安排一点。",
+      keywords: "平静、整理、呼吸",
+      quote: "行到水穷处，坐看云起时。",
+      source: "王维《终南别业》",
+      metaphorTitle: "今日意象：月光下的小湖",
+      metaphorText: "水面并非没有波纹，只是终于能够照见月亮。",
+      planetIndex: 0,
+    });
+    expect(deepSeekFetch).toHaveBeenCalledWith(
+      "https://api.deepseek.com/chat/completions",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          authorization: "Bearer test-deepseek-key",
+          "content-type": "application/json",
+        }),
+      }),
+    );
+
   });
 
   it("creates a valid entry with a UUID and camelCase fields", async () => {

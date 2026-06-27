@@ -14,6 +14,7 @@ export default defineConfig({
       miniflare: {
         bindings: {
           DIARY_ACCESS_TOKEN: "test-access-token",
+          DEEPSEEK_API_KEY: "test-deepseek-key",
         },
         d1Databases: ["DB"],
       },

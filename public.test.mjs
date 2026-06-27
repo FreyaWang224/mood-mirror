@@ -49,6 +49,7 @@ assert.match(html, /sessionStorage\.removeItem\(accessTokenStorageKey\)/);
 assert.ok(!html.includes("window.prompt"), "Access token entry must work without browser prompt support.");
 
 assert.match(html, /fetch\(["']\/api\/entries["']/);
+assert.match(html, /fetch\(["']\/api\/analyze["']/);
 assert.match(html, /authorization:\s*`Bearer \$\{getAccessToken\(\)\}`/);
 assert.match(html, /response\.ok/);
 assert.match(html, /response\.status\s*===\s*401/);
@@ -61,6 +62,25 @@ assert.match(
 assert.match(
   html,
   /content:\s*latestEntry\.diary[\s\S]*?mood:\s*latestEntry\.mood[\s\S]*?intensity:\s*3/,
+);
+assert.match(
+  html,
+  /aiResponse:\s*serializeAnalysis\(latestEntry\)/,
+  "Saved entries should persist the generated AI analysis payload.",
+);
+assert.match(
+  html,
+  /function applyAnalysisToEntry\s*\(/,
+  "The deployed page should merge /api/analyze results into the resonance card.",
+);
+assert.match(
+  html,
+  /function serializeAnalysis\s*\(/,
+  "The deployed page should serialize generated analysis for D1 history.",
+);
+assert.ok(
+  !html.includes("DEEPSEEK_API_KEY"),
+  "DeepSeek secrets must never appear in browser HTML.",
 );
 
 // On 401 the stored token is cleared and a visible Chinese message is shown.

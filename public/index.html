@@ -2669,12 +2669,102 @@
     }
 
     function mapApiEntry(row) {
+      const analysis = parseStoredAnalysis(row.aiResponse);
       return {
+        ...analysis,
         id: row.id,
         mood: row.mood,
         diary: typeof row.content === "string" ? row.content : "",
         createdAt: typeof row.createdAt === "string" ? row.createdAt : ""
       };
+    }
+
+    function parseStoredAnalysis(value) {
+      if (typeof value !== "string" || !value) {
+        return {};
+      }
+
+      try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+          ? parsed
+          : {};
+      } catch (error) {
+        return {};
+      }
+    }
+
+    function applyAnalysisToEntry(entry, analysis) {
+      if (!analysis || typeof analysis !== "object") {
+        return entry;
+      }
+
+      const mood = typeof analysis.mood === "string" && analysis.mood in moodProfiles
+        ? analysis.mood
+        : entry.mood;
+      const profile = moodProfiles[mood] || moodProfiles.calm;
+
+      return {
+        ...entry,
+        mood,
+        moodLabel: profile.label,
+        companion: typeof analysis.companion === "string" ? analysis.companion : entry.companion,
+        summary: typeof analysis.summary === "string" ? analysis.summary : entry.summary,
+        reason: typeof analysis.reason === "string" ? analysis.reason : entry.reason,
+        advice: typeof analysis.advice === "string" ? analysis.advice : entry.advice,
+        keywords: typeof analysis.keywords === "string" ? analysis.keywords : entry.keywords,
+        quote: typeof analysis.quote === "string" ? analysis.quote : entry.quote,
+        source: typeof analysis.source === "string" ? analysis.source : entry.source,
+        metaphorTitle: typeof analysis.metaphorTitle === "string" ? analysis.metaphorTitle : entry.metaphorTitle,
+        metaphorText: typeof analysis.metaphorText === "string" ? analysis.metaphorText : entry.metaphorText,
+        planetIndex: Number.isInteger(analysis.planetIndex) ? analysis.planetIndex : profile.planetIndex
+      };
+    }
+
+    function serializeAnalysis(entry) {
+      const payload = {
+        mood: entry.mood,
+        companion: entry.companion,
+        summary: entry.summary,
+        reason: entry.reason,
+        advice: entry.advice,
+        keywords: entry.keywords,
+        quote: entry.quote,
+        source: entry.source,
+        metaphorTitle: entry.metaphorTitle,
+        metaphorText: entry.metaphorText
+      };
+      const serialized = JSON.stringify(payload);
+      return serialized.length <= 1900
+        ? serialized
+        : JSON.stringify({
+          mood: entry.mood,
+          companion: entry.companion,
+          summary: entry.summary,
+          advice: entry.advice
+        });
+    }
+
+    async function analyzeEntry(entry) {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: authHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          content: entry.diary,
+          mood: entry.mood
+        })
+      });
+
+      if (response.status === 401) {
+        setAccessToken("");
+        updateAccessTokenUi("访问口令不正确，请重新输入。");
+        throw new Error("unauthorized");
+      }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return applyAnalysisToEntry(entry, await response.json());
     }
 
     async function loadHistory() {
@@ -3034,7 +3124,7 @@
             content: latestEntry.diary,
             mood: latestEntry.mood,
             intensity: 3,
-            aiResponse: latestEntry.companion || null
+            aiResponse: serializeAnalysis(latestEntry)
           })
         });
 
@@ -3098,7 +3188,14 @@
       (travelerButton || gardenButton).focus();
     }
 
-    function beginJourney(event) {
+    function setJourneyPending(pending) {
+      setJournalControlsDisabled(pending);
+      journeyButton.querySelector(".btn-text").textContent = pending
+        ? "正在读这封信"
+        : "封好这封信，寄往今日星球";
+    }
+
+    async function beginJourney(event) {
       event.preventDefault();
 
       if (appState === "resonance-intro" || appState === "resonance-card") {
@@ -3109,11 +3206,28 @@
         return;
       }
 
+      if (!getAccessToken()) {
+        showToast("请先在右上角输入访问口令，再生成共鸣星球。");
+        updateAccessTokenUi("请先输入日记访问口令。");
+        return;
+      }
+
       entrySavePending = false;
-      latestEntry = buildEntry(selectedMood, diaryText.value.trim());
+      const draftEntry = buildEntry(selectedMood, diaryText.value.trim());
+      setJourneyPending(true);
+
+      try {
+        latestEntry = await analyzeEntry(draftEntry);
+      } catch (error) {
+        latestEntry = null;
+        setJourneyPending(false);
+        showToast("暂时无法连接 AI，请稍后再试一次。");
+        return;
+      }
+
       viewingHistoryEntry = false;
       saveEntryButton.hidden = false;
-      setJournalControlsDisabled(false);
+      setJourneyPending(false);
       renderEntry(latestEntry);
       setAppState("resonance-intro");
       revealCardButton.focus();

@@ -74,12 +74,14 @@ npx wrangler d1 create emotion-diary-db
 
 ```dotenv
 DIARY_ACCESS_TOKEN=your-local-token
+DEEPSEEK_API_KEY=your-deepseek-api-key
 ```
 
 线上部署前，将同名 Secret 写入 Cloudflare：
 
 ```bash
 npx wrangler secret put DIARY_ACCESS_TOKEN
+npx wrangler secret put DEEPSEEK_API_KEY
 ```
 
 第一次打开页面或口令失效时，浏览器会提示输入“日记访问口令”。口令只保存在当前浏览器会话的 `sessionStorage` 中；关闭标签页或浏览器后可能需要重新输入。
@@ -102,6 +104,10 @@ npx wrangler secret put SECRET_NAME
 
 不要将 Secret 放入浏览器端代码、HTML、`wrangler.jsonc` 或 Git 仓库。
 
+`DEEPSEEK_API_KEY` 只在 Cloudflare Worker 后端读取。浏览器端通过同域
+`/api/analyze` 请求生成情绪分析，因此 DeepSeek key 不会出现在
+`public/index.html` 或用户浏览器里。
+
 ## API
 
 创建和更新日记时，请求体为 JSON：
@@ -120,6 +126,7 @@ npx wrangler secret put SECRET_NAME
 | 方法 | 路径 | 说明 | 成功响应 |
 | --- | --- | --- | --- |
 | `GET` | `/api/health` | 检查 Worker 与 D1 | `200` |
+| `POST` | `/api/analyze` | 根据日记生成 AI 情绪分析 | `200` |
 | `GET` | `/api/entries` | 获取最近 50 条日记 | `200` |
 | `POST` | `/api/entries` | 新建日记 | `201` |
 | `GET` | `/api/entries/:id` | 获取单条日记 | `200` |
