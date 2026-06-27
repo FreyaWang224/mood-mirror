@@ -100,6 +100,24 @@ assert.match(html, /row\.content/);
 assert.match(html, /row\.mood/);
 assert.match(html, /row\.createdAt/);
 
+// Home entry hints should be readable on first paint, then hand off to the
+// existing breathing animation after a short orientation moment.
+assert.match(
+  html,
+  /data-hints-ready=["']false["']/,
+  "Home hints should start in the visible orientation state.",
+);
+assert.match(
+  html,
+  /#appRoot\[data-hints-ready="false"\]\s+\.spot-hint\s*\{[\s\S]*?animation:\s*none;[\s\S]*?opacity:\s*1;[\s\S]*?\}/,
+  "Initial home hints should all be visible before breathing starts.",
+);
+assert.match(
+  html,
+  /window\.setTimeout\(\(\) => \{[\s\S]*appRoot\.dataset\.hintsReady = "true";[\s\S]*\},\s*2200\);/,
+  "Home hints should switch to the animated state after a short delay.",
+);
+
 assert.match(
   vitestConfig,
   /include:\s*\[\s*["']test\/\*\*\/\*\.test\.ts["']\s*\]/,

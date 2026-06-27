@@ -371,6 +371,11 @@
       animation: hint-breathe 6.5s ease-in-out infinite;
     }
 
+    #appRoot[data-hints-ready="false"] .spot-hint {
+      animation: none;
+      opacity: 1;
+    }
+
     /* Cursor near the spot → keep it fully shown; otherwise it breathes in and out. */
     .landmark-button:hover .spot-hint,
     .landmark-button:focus-within .spot-hint,
@@ -2117,7 +2122,7 @@
   </style>
 </head>
 <body>
-  <main id="appRoot" class="planet-app" data-app-state="home-idle" data-traveler-motion="idle" data-journal-step="mood">
+  <main id="appRoot" class="planet-app" data-app-state="home-idle" data-traveler-motion="idle" data-journal-step="mood" data-hints-ready="false">
     <section id="homeScene" class="scene home-scene is-active" aria-label="主星球家园">
       <div class="home-planet-layer" aria-hidden="true"></div>
       <div class="star-field" aria-hidden="true"></div>
@@ -3194,6 +3199,10 @@
         closeActiveLayer();
       }
     });
+
+    window.setTimeout(() => {
+      appRoot.dataset.hintsReady = "true";
+    }, 2200);
 
     setAppState("home-idle");
     initAccessTokenPanel();
