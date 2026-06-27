@@ -3,1135 +3,2337 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AI 情绪日记 Prototype</title>
+  <title>Mood Mirror · 情绪星球</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --ink: #20222a;
-      --muted: #6c7280;
-      --line: #dfe4ec;
-      --paper: #fffaf4;
-      --mist: #eef6f2;
-      --blue: #6d90b9;
-      --green: #7caa8d;
-      --amber: #d99b50;
-      --rose: #c46a7a;
-      --violet: #8c7bb8;
-      --charcoal: #1f2b2f;
-      --shadow: 0 18px 45px rgba(42, 48, 58, 0.12);
+      color-scheme: dark;
+      --bg: #040b17;
+      --panel: rgba(8, 15, 30, 0.84);
+      --line: rgba(225, 235, 255, 0.2);
+      --text: #f5f7ff;
+      --muted: #bdc6df;
+      --accent: #ffd88a;
+      --paper: #efe2c2;
+      --paper-ink: #3a2c1c;
+      --paper-muted: #7a6a52;
+      --paper-line: rgba(86, 62, 36, 0.24);
+      --paper-accent: #9a6f43;
+      --danger: #9c473c;
+      --font-ui: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-serif: "Noto Serif SC", "Songti SC", "PingFang SC", serif;
+      --font-hand: "Ma Shan Zheng", "Noto Serif SC", "Songti SC", cursive;
+      --font-latin: "Cormorant Garamond", "Noto Serif SC", serif;
     }
 
     * {
       box-sizing: border-box;
     }
 
+    html,
     body {
       margin: 0;
-      min-height: 100vh;
-      color: var(--ink);
-      font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
-      background:
-        linear-gradient(90deg, rgba(31, 43, 47, 0.07) 1px, transparent 1px) 0 0 / 72px 72px,
-        linear-gradient(180deg, rgba(31, 43, 47, 0.055) 1px, transparent 1px) 0 0 / 72px 72px,
-        radial-gradient(circle at 12% 10%, rgba(217, 155, 80, 0.22), transparent 27%),
-        radial-gradient(circle at 84% 8%, rgba(109, 144, 185, 0.2), transparent 27%),
-        linear-gradient(140deg, #f7efe4 0%, #eaf3f1 48%, #f5edf4 100%);
+      width: 100%;
+      min-height: 100%;
+      background: var(--bg);
+      overflow: hidden;
+      font-family: var(--font-ui);
+      color: var(--text);
     }
 
-    button,
-    input,
-    textarea {
+    button {
+      font: inherit;
+      color: inherit;
+    }
+
+    button:focus-visible {
+      outline: 2px solid #fff3c6;
+      outline-offset: 3px;
+    }
+
+    #diaryText:focus-visible {
+      outline: 2px solid rgba(141, 102, 69, 0.4);
+      outline-offset: 2px;
+    }
+
+    .planet-app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--bg);
+      isolation: isolate;
+    }
+
+    .scene,
+    .layer {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    .scene *,
+    .layer *,
+    .scene::before,
+    .scene::after,
+    .layer::before,
+    .layer::after {
+      transition-property: inherit;
+    }
+
+    .scene.is-active,
+    .layer.is-open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .home-scene {
+      background-color: #07101f;
+    }
+
+    .home-planet-layer {
+      position: absolute;
+      inset: -2%;
+      background-image: url("assets/emotion-planet/home-planet-desktop.png");
+      background-image: image-set(
+        url("assets/emotion-planet/home-planet-desktop.webp") type("image/webp"),
+        url("assets/emotion-planet/home-planet-desktop.png") type("image/png")
+      );
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      pointer-events: none;
+      transform-origin: center;
+      animation: home-planet-float 7.5s ease-in-out infinite;
+      will-change: transform;
+    }
+
+    .star-field,
+    .home-scene::after {
+      position: absolute;
+      inset: 0;
+      content: "";
+      pointer-events: none;
+    }
+
+    .star-field::before,
+    .star-field::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 1px, transparent 1.4px),
+        radial-gradient(circle, rgba(145, 212, 255, 0.7) 0 1px, transparent 1.6px);
+      background-position: 0 0, 32px 48px;
+      background-size: 120px 120px, 180px 180px;
+      opacity: 0.55;
+    }
+
+    .home-depth-layer {
+      position: absolute;
+      inset: -5%;
+      pointer-events: none;
+      will-change: transform, opacity;
+    }
+
+    .home-depth-layer--far {
+      z-index: 1;
+      background:
+        radial-gradient(circle at 18% 24%, rgba(159, 207, 255, 0.24) 0 1px, transparent 2px),
+        radial-gradient(circle at 78% 34%, rgba(255, 220, 160, 0.2) 0 1px, transparent 2px);
+      background-size: 170px 170px, 230px 230px;
+      animation: scene-drift-far 16s ease-in-out infinite alternate;
+    }
+
+    .home-depth-layer--near {
+      z-index: 2;
+      background:
+        radial-gradient(circle at 20% 80%, rgba(132, 186, 226, 0.13), transparent 18%),
+        radial-gradient(circle at 82% 72%, rgba(204, 137, 160, 0.12), transparent 20%);
+      animation: scene-drift-near 11s ease-in-out infinite alternate;
+    }
+
+    .home-scene::after {
+      z-index: 1;
+      background: linear-gradient(180deg, rgba(2, 7, 14, 0.25), rgba(2, 7, 14, 0.7));
+    }
+
+    .hud {
+      position: absolute;
+      top: max(16px, calc(env(safe-area-inset-top) + 8px));
+      left: max(16px, calc(env(safe-area-inset-left) + 8px));
+      z-index: 3;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(4, 10, 22, 0.7);
+      backdrop-filter: blur(10px);
+    }
+
+    .access-token-panel {
+      position: absolute;
+      top: max(16px, calc(env(safe-area-inset-top) + 8px));
+      right: max(16px, calc(env(safe-area-inset-right) + 8px));
+      z-index: 6;
+      display: grid;
+      justify-items: end;
+      gap: 8px;
+      width: min(280px, calc(100vw - 32px));
+    }
+
+    .token-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(4, 10, 22, 0.7);
+      backdrop-filter: blur(10px);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .token-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #9c7a4a;
+      box-shadow: 0 0 8px rgba(156, 122, 74, 0.6);
+    }
+
+    .access-token-panel[data-connected="true"] .token-dot {
+      background: #7dd39a;
+      box-shadow: 0 0 8px rgba(125, 211, 154, 0.7);
+    }
+
+    .token-form {
+      width: 100%;
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(6, 14, 28, 0.92);
+      backdrop-filter: blur(10px);
+    }
+
+    .token-label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .token-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .token-row input {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(2, 7, 14, 0.7);
+      color: var(--text);
       font: inherit;
     }
 
-    .app-shell {
-      width: min(1160px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 32px 0;
+    .token-save {
+      padding: 8px 14px;
+      border: 1px solid rgba(255, 216, 138, 0.4);
+      border-radius: 6px;
+      background: rgba(255, 216, 138, 0.14);
+      color: var(--text);
+      cursor: pointer;
     }
 
-    .surface {
-      background: rgba(255, 255, 255, 0.76);
-      border: 1px solid rgba(255, 255, 255, 0.72);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
-    }
-
-    .top-nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 14px;
-      color: #4f5664;
-      font-size: 14px;
-    }
-
-    .brand-mark {
-      display: inline-grid;
-      place-items: center;
-      width: 36px;
-      height: 36px;
-      margin-right: 9px;
-      border-radius: 8px;
-      background: var(--charcoal);
-      color: #fff;
-      font-weight: 800;
-    }
-
-    .brand-lockup {
-      display: flex;
-      align-items: center;
-      font-weight: 800;
-      color: var(--ink);
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 18px;
-      flex-wrap: wrap;
-    }
-
-    /* Module 1: App Header */
-    .app-header {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-      gap: 30px;
-      align-items: end;
-      padding: 30px;
-      border-radius: 8px;
-    }
-
-    .eyebrow {
-      margin: 0 0 10px;
-      color: var(--green);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0;
-    }
-
-    h1 {
+    .token-status {
       margin: 0;
-      font-size: clamp(34px, 6vw, 64px);
-      line-height: 1.02;
-      letter-spacing: 0;
-    }
-
-    .intro {
-      max-width: 680px;
-      margin: 16px 0 0;
-      color: #4f5664;
-      font-size: 17px;
-      line-height: 1.75;
-    }
-
-    .hero-preview {
-      display: grid;
-      gap: 12px;
-      align-self: stretch;
-    }
-
-    .date-pill,
-    .micro-card {
-      padding: 14px 16px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.62);
       color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
     }
 
-    .date-pill strong {
-      display: block;
-      color: var(--ink);
-      font-size: 20px;
+    .hud-mark {
+      width: 20px;
+      height: 20px;
+      border: 1px solid rgba(255, 216, 138, 0.85);
+      border-radius: 999px;
+      box-shadow: inset 0 0 0 5px rgba(255, 216, 138, 0.12);
     }
 
-    .micro-card {
+    .hud-copy {
       display: grid;
-      grid-template-columns: 42px minmax(0, 1fr);
-      gap: 12px;
-      align-items: center;
+      gap: 2px;
     }
 
-    .micro-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      background: linear-gradient(145deg, var(--green), var(--blue));
-      box-shadow: inset 0 -10px 18px rgba(31, 43, 47, 0.18);
+    .hud-copy strong {
+      font-size: 14px;
+      line-height: 1.1;
     }
 
-    .micro-card b,
-    .micro-card span {
-      display: block;
-    }
-
-    .micro-card span {
-      margin-top: 4px;
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .workspace {
-      display: grid;
-      gap: 22px;
-      margin-top: 22px;
-      align-items: start;
-    }
-
-    .flow-steps {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 22px;
-    }
-
-    .flow-step {
-      display: grid;
-      grid-template-columns: 44px minmax(0, 1fr);
-      gap: 14px;
-      align-items: center;
-      padding: 14px;
-      border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.7);
-      background: rgba(255, 255, 255, 0.54);
+    .hud-copy span {
       color: var(--muted);
+      font-size: 12px;
+      line-height: 1.1;
     }
 
-    .flow-copy strong,
-    .flow-copy span {
-      display: block;
+    .landmark-button,
+    .traveler-button,
+    .landmark {
+      position: absolute;
+      z-index: 2;
     }
 
-    .flow-copy strong {
-      color: var(--ink);
-      margin-bottom: 3px;
+    .landmark-button,
+    .traveler-button {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .step-number {
+    /* Soft pulsing glow marks the existing art as clickable, no chip/emoji. */
+    .landmark-button::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 34%;
+      aspect-ratio: 1;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(255, 224, 160, 0.5), rgba(255, 210, 140, 0.12) 52%, transparent 72%);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      animation: spot-pulse 3.4s ease-in-out infinite;
+    }
+
+    .landmark-button:hover::before,
+    .landmark-button:focus-visible::before {
+      background: radial-gradient(circle, rgba(255, 243, 198, 0.72), rgba(255, 216, 138, 0.22) 54%, transparent 74%);
+    }
+
+    .landmark-button {
+      width: clamp(120px, 16vw, 168px);
+      height: clamp(120px, 16vw, 168px);
+      padding: 0;
+    }
+
+    .garden-button {
+      top: clamp(150px, 40%, 360px);
+      left: clamp(40px, 9%, 180px);
+    }
+
+    .observatory-button {
+      top: clamp(180px, 32%, 340px);
+      left: clamp(46%, 52%, 60%);
+    }
+
+    /* Horizontal-scroll hint; text rests on the open parchment. */
+    .spot-hint {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      width: 240px;
+      height: 146px;
+      padding: 24px 44px 26px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      width: 44px;
-      height: 44px;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: rgba(109, 144, 185, 0.16);
-      color: var(--blue);
-      font-weight: 800;
-      font-size: 17px;
-      line-height: 1;
-      flex: 0 0 44px;
+      gap: 4px;
+      background-image: url("assets/emotion-planet/scroll-h.png");
+      background-image: image-set(
+        url("assets/emotion-planet/scroll-h.webp") type("image/webp"),
+        url("assets/emotion-planet/scroll-h.png") type("image/png")
+      );
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 100% 100%;
+      filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.5));
+      text-align: center;
+      pointer-events: none;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 350ms ease;
+      animation: hint-breathe 6.5s ease-in-out infinite;
     }
 
-    .flow-step.is-active,
-    .flow-step.is-done {
-      border-color: rgba(109, 144, 185, 0.38);
-      background: rgba(255, 255, 255, 0.82);
+    /* Cursor near the spot → keep it fully shown; otherwise it breathes in and out. */
+    .landmark-button:hover .spot-hint,
+    .landmark-button:focus-within .spot-hint,
+    .diary-hint:hover,
+    .diary-hint:focus-within {
+      animation: none;
+      opacity: 1;
     }
 
-    .flow-step.is-active .step-number {
-      background: var(--charcoal);
-      color: #fff;
+    .spot-hint strong {
+      display: block;
+      color: #49331a;
+      font-family: var(--font-serif);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.25;
     }
 
-    .result-panel {
+    .spot-hint small {
+      display: block;
+      color: #6a5436;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .enter-button {
+      margin-top: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 18px;
+      border: 1px solid #422a12;
+      border-radius: 9px;
+      background: linear-gradient(180deg, #a8773f 0%, #885a30 52%, #714826 100%);
+      color: #fff4e2;
+      font-family: var(--font-serif);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-shadow: 0 1px 1px rgba(58, 36, 16, 0.7);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 226, 180, 0.55),
+        inset 0 -3px 4px rgba(58, 36, 16, 0.45),
+        0 3px 0 #543419,
+        0 6px 10px rgba(0, 0, 0, 0.45);
+      pointer-events: auto;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 110ms ease, box-shadow 110ms ease, filter 110ms ease;
+    }
+
+    .enter-button:hover,
+    .enter-button:focus-visible {
+      filter: brightness(1.07);
+      transform: translateY(-1px);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 226, 180, 0.6),
+        inset 0 -3px 4px rgba(58, 36, 16, 0.45),
+        0 4px 0 #543419,
+        0 8px 13px rgba(0, 0, 0, 0.48);
+    }
+
+    .enter-button:active {
+      transform: translateY(2px);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 226, 180, 0.4),
+        inset 0 2px 4px rgba(58, 36, 16, 0.5),
+        0 1px 0 #543419,
+        0 2px 5px rgba(0, 0, 0, 0.4);
+    }
+
+    .garden-button .spot-hint {
+      animation-delay: 0s;
+    }
+
+    .observatory-button .spot-hint {
+      animation-delay: 2.2s;
+    }
+
+    /* Diary hint floats over the open book on the table (the writing entry). */
+    .diary-hint {
+      position: absolute;
+      left: clamp(180px, 34%, 640px);
+      top: clamp(70px, 18%, 200px);
+      bottom: auto;
+      z-index: 2;
+      animation-delay: 4.4s;
+    }
+
+    .traveler-button {
+      top: clamp(144px, 38%, 290px);
+      left: 40%;
+      width: clamp(76px, 18vw, 104px);
+      height: clamp(176px, 42vw, 236px);
+      opacity: 0;
+      padding: 0;
+      transform: translate(-50%, -50%);
+    }
+
+    .traveler-aura {
       display: none;
     }
 
-    .is-result-ready .result-panel {
+    #appRoot[data-traveler-motion="idle"] .traveler-aura {
+      animation: traveler-idle 3.8s ease-in-out infinite;
+    }
+
+    #appRoot[data-traveler-motion="approaching"] .traveler-aura {
+      opacity: 0;
+    }
+
+    .traveler-sprite {
+      position: relative;
       display: block;
+      width: 100%;
+      height: 100%;
+      background-image: url("assets/emotion-planet/traveler-sprite.png");
+      background-image: image-set(
+        url("assets/emotion-planet/traveler-sprite.webp") type("image/webp"),
+        url("assets/emotion-planet/traveler-sprite.png") type("image/png")
+      );
+      background-position: 0 0;
+      background-repeat: no-repeat;
+      background-size: 500% 100%;
+      filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.4));
+      opacity: 0;
+      transition: opacity 180ms ease;
     }
 
-    .panel {
+    .traveler-sprite--greeting {
+      background-position: 100% 0;
+    }
+
+    .companion-dialogue {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      z-index: 3;
+      width: min(360px, calc(100vw - 36px));
+      padding: 16px;
+      border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 24px;
+      background: var(--panel);
+      backdrop-filter: blur(10px);
     }
 
-    .panel-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 18px;
+    .recent-garden {
+      position: absolute;
+      left: max(18px, calc(env(safe-area-inset-left) + 10px));
+      bottom: max(28px, calc(env(safe-area-inset-bottom) + 12px));
+      z-index: 3;
+      display: none;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      width: min(220px, calc(100vw - 132px));
+      min-height: 132px;
+      padding: 12px;
+      border: 1px solid rgba(255, 224, 160, 0.28);
+      border-radius: 10px;
+      background: rgba(4, 10, 22, 0.5);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+      align-content: end;
+      animation: hint-appear 320ms ease both;
     }
 
-    h2 {
+    #appRoot[data-garden-open="true"] .recent-garden {
+      display: grid;
+    }
+
+    .recent-garden:focus-visible {
+      outline: 2px solid #fff3c6;
+      outline-offset: 3px;
+    }
+
+    .dialogue-speaker {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+
+    .companion-dialogue h2,
+    .panel h2 {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .companion-dialogue p,
+    .panel p {
       margin: 0;
-      font-size: 20px;
-      letter-spacing: 0;
-    }
-
-    .hint {
-      margin: 0;
-      color: var(--muted);
+      color: var(--text);
       font-size: 14px;
       line-height: 1.6;
     }
 
-    /* Module 2: Mood Selector */
-    .mood-grid {
+    .companion-dialogue .dialogue-speaker {
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .resonance-scene {
+      background: #061020;
+    }
+
+    .resonance-scene {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .resonance-scene::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(4, 10, 22, 0.14), rgba(4, 10, 22, 0.62)),
+        radial-gradient(circle at 28% 24%, rgba(185, 157, 255, 0.18), transparent 26%),
+        radial-gradient(circle at 72% 68%, rgba(255, 194, 124, 0.16), transparent 30%);
+      pointer-events: none;
+    }
+
+    .resonance-world {
+      --planet-index: 0;
+      --planet-x: 0;
+      --planet-y: 0;
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center start;
+      padding: clamp(24px, 5vw, 72px);
+      transform: scale(1);
+      transform-origin: center;
+      will-change: transform, opacity;
+    }
+
+    .resonance-world::before {
+      content: "";
+      width: min(64vmin, 620px);
+      max-width: min(58vw, 620px);
+      aspect-ratio: 1;
+      background-image: url("assets/emotion-planet/resonance-planets.png");
+      background-image: image-set(
+        url("assets/emotion-planet/resonance-planets.webp") type("image/webp"),
+        url("assets/emotion-planet/resonance-planets.png") type("image/png")
+      );
+      background-position: calc(var(--planet-x) * 50%) calc(var(--planet-y) * 100%);
+      background-size: 300% 200%;
+      background-repeat: no-repeat;
+      filter: drop-shadow(0 34px 60px rgba(0, 0, 0, 0.36));
+    }
+
+    #appRoot[data-app-state="resonance-intro"] .resonance-world {
+      animation:
+        resonance-arrive 900ms cubic-bezier(0.18, 0.78, 0.24, 1) both,
+        resonance-float 6.5s 900ms ease-in-out infinite;
+    }
+
+    #appRoot[data-app-state="resonance-card"] .resonance-world {
+      animation: resonance-float 6.5s ease-in-out infinite;
+    }
+
+    .resonance-world[data-mood="calm"] { --planet-x: 0; --planet-y: 0; }
+    .resonance-world[data-mood="happy"] { --planet-x: 1; --planet-y: 0; }
+    .resonance-world[data-mood="anxious"] { --planet-x: 2; --planet-y: 0; }
+    .resonance-world[data-mood="sad"] { --planet-x: 0; --planet-y: 1; }
+    .resonance-world[data-mood="tired"] { --planet-x: 1; --planet-y: 1; }
+    .resonance-world[data-mood="angry"] { --planet-x: 2; --planet-y: 1; }
+
+    .resonance-companion,
+    .resonance-card {
+      --card-rest-transform: none;
+      position: absolute;
+      z-index: 1;
+      transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+    }
+
+    .resonance-companion[hidden],
+    .resonance-card[hidden] {
+      display: none;
+    }
+
+    .resonance-companion {
+      top: 50%;
+      right: clamp(40px, 20vw, 360px);
+      display: grid;
+      grid-template-columns: minmax(0, 420px);
+      align-items: center;
+      gap: 0;
+      max-width: min(420px, calc(48vw - 48px));
+      transform: translateY(-50%);
+    }
+
+    .resonance-companion .traveler-sprite {
+      display: none;
+    }
+
+    .resonance-companion .companion-dialogue {
+      position: relative;
+      right: auto;
+      bottom: auto;
+      width: min(420px, 100%);
+    }
+
+    .soft-button,
+    .primary-button,
+    .secondary-button {
+      min-height: 46px;
+      padding: 0 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .soft-button {
+      margin-top: 14px;
+      width: 100%;
+      border: 1px solid rgba(255, 216, 138, 0.24);
+      background: rgba(255, 216, 138, 0.08);
+      color: var(--text);
+    }
+
+    .paper-panel {
+      position: relative;
+      border: 0;
+      background-color: transparent;
+      background-image: url("assets/emotion-planet/parchment-sheet.png");
+      background-image: image-set(
+        url("assets/emotion-planet/parchment-sheet.webp") type("image/webp"),
+        url("assets/emotion-planet/parchment-sheet.png") type("image/png")
+      );
+      background-position: center;
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      filter: drop-shadow(0 26px 46px rgba(0, 0, 0, 0.5));
+      color: var(--paper-ink);
+      font-family: var(--font-serif);
+      scrollbar-gutter: stable;
+    }
+
+    .paper-panel > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Dark, visible scrollbar on the parchment surfaces. */
+    .resonance-card,
+    .history-panel,
+    .journal-panel {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(58, 38, 18, 0.7) rgba(86, 60, 32, 0.16);
+    }
+
+    .resonance-card::-webkit-scrollbar,
+    .history-panel::-webkit-scrollbar,
+    .journal-panel::-webkit-scrollbar {
+      width: 11px;
+    }
+
+    .resonance-card::-webkit-scrollbar-track,
+    .history-panel::-webkit-scrollbar-track,
+    .journal-panel::-webkit-scrollbar-track {
+      margin: 6px 0;
+      border-radius: 8px;
+      background: rgba(86, 60, 32, 0.16);
+    }
+
+    .resonance-card::-webkit-scrollbar-thumb,
+    .history-panel::-webkit-scrollbar-thumb,
+    .journal-panel::-webkit-scrollbar-thumb {
+      border-radius: 8px;
+      border: 2px solid transparent;
+      background-color: rgba(58, 38, 18, 0.72);
+      background-clip: padding-box;
+    }
+
+    .resonance-card::-webkit-scrollbar-thumb:hover,
+    .history-panel::-webkit-scrollbar-thumb:hover,
+    .journal-panel::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(42, 26, 12, 0.9);
+      background-clip: padding-box;
+    }
+
+    .resonance-card {
+      position: absolute;
+      top: max(24px, calc(env(safe-area-inset-top) + 8px));
+      right: max(24px, calc(env(safe-area-inset-right) + 8px));
+      bottom: auto;
+      width: min(720px, 48vw, calc(100vw - 48px));
+      height: min(760px, calc(100svh - 48px));
+      max-height: min(760px, calc(100svh - 48px));
+      padding: clamp(78px, 8vw, 110px) clamp(58px, 5.4vw, 86px) clamp(104px, 9vw, 132px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      background-image: url("assets/emotion-planet/resonance-paper-page.png");
+      background-position: center;
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+    }
+
+    #appRoot[data-app-state="resonance-card"] .resonance-card {
+      animation: card-arrive 520ms ease-out both;
+    }
+
+    .resonance-card h1 {
+      margin: 0 0 18px;
+      color: var(--paper-ink);
+      font-family: var(--font-hand);
+      font-weight: 400;
+      font-size: clamp(30px, 4vw, 34px);
+      letter-spacing: 1px;
+      line-height: 1.18;
+    }
+
+    #resonanceTitle:focus,
+    .resonance-title:focus {
+      outline: none;
+    }
+
+    .analysis-grid {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .analysis-grid section {
+      padding-top: 14px;
+      border-top: 1px solid rgba(66, 48, 30, 0.12);
+    }
+
+    .analysis-grid section:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .analysis-grid h2,
+    .metaphor-copy h2 {
+      margin: 0 0 8px;
+      color: var(--paper-accent);
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .analysis-grid p,
+    .metaphor-copy p,
+    .resonance-card blockquote p,
+    .resonance-card blockquote cite {
+      margin: 0;
+      color: var(--paper-ink);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .resonance-card blockquote {
+      margin: 0 0 18px;
+      padding: 14px 0;
+      border-top: 1px solid rgba(66, 48, 30, 0.12);
+      border-bottom: 1px solid rgba(66, 48, 30, 0.12);
+    }
+
+    .resonance-card blockquote cite {
+      display: block;
+      margin-top: 8px;
+      color: var(--paper-muted);
+      font-style: normal;
+    }
+
+    .metaphor-copy {
+      margin-bottom: 20px;
+    }
+
+    .saved-diary {
+      margin-bottom: 20px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(66, 48, 30, 0.12);
+    }
+
+    .saved-diary h2 {
+      margin: 0 0 8px;
+      color: var(--paper-accent);
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .saved-diary p {
+      margin: 0;
+      color: var(--paper-ink);
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .card-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .primary-button,
+    .secondary-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: var(--font-serif);
+      font-size: 15px;
+      letter-spacing: 0.5px;
+      transition: filter 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .primary-button {
+      border: 1px solid rgba(74, 52, 30, 0.55);
+      background: linear-gradient(135deg, #7a5736 0%, #9c764b 52%, #855e39 100%);
+      color: #fff7e8;
+      font-weight: 600;
+      box-shadow: 0 8px 18px rgba(96, 66, 34, 0.32), inset 0 1px 0 rgba(255, 246, 224, 0.35);
+    }
+
+    .primary-button:hover,
+    .primary-button:focus-visible {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .secondary-button {
+      border: 1px solid rgba(120, 88, 52, 0.45);
+      background: rgba(255, 250, 240, 0.7);
+      color: var(--paper-ink);
+      font-weight: 500;
+    }
+
+    .secondary-button:hover,
+    .secondary-button:focus-visible {
+      background: rgba(255, 248, 234, 0.92);
+      transform: translateY(-1px);
+    }
+
+    .layer {
+      z-index: 4;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(2, 7, 14, 0.3);
+      backdrop-filter: blur(2px);
+    }
+
+    .panel {
+      width: min(440px, 100%);
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(5, 12, 24, 0.9);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .panel-header h2 {
+      margin-bottom: 0;
+    }
+
+    .layer-close {
+      position: relative;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid rgba(120, 88, 52, 0.4);
+      border-radius: 999px;
+      background: rgba(255, 250, 240, 0.5);
+      color: var(--paper-ink);
+      cursor: pointer;
+      transition: background-color 180ms ease, transform 180ms ease;
+    }
+
+    .layer-close:hover,
+    .layer-close:focus-visible {
+      background: rgba(255, 245, 228, 0.95);
+      transform: rotate(90deg);
+    }
+
+    .layer-close::before,
+    .layer-close::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .layer-close::before {
+      transform: rotate(45deg);
+    }
+
+    .layer-close::after {
+      transform: rotate(-45deg);
+    }
+
+    .history-panel {
+      width: min(760px, calc(100vw - 48px));
+      max-height: min(760px, calc(100svh - 32px));
+      padding: 64px 70px 84px;
+      overflow: auto;
+    }
+
+    .history-panel h1 {
+      margin: 0 0 10px;
+      color: var(--paper-ink);
+      font-family: var(--font-hand);
+      font-weight: 400;
+      font-size: clamp(32px, 4.4vw, 40px);
+      letter-spacing: 1px;
+      line-height: 1.18;
+    }
+
+    .history-panel p {
+      margin: 0;
+      color: var(--paper-muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .history-panel-copy {
+      margin-bottom: 18px;
+    }
+
+    .history-map {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
+      gap: 12px;
+      min-height: 148px;
+      margin-top: 18px;
+    }
+
+    .history-empty-state {
+      margin-top: 14px;
+      color: var(--paper-muted);
+    }
+
+    .history-flower,
+    .history-planet {
+      --atlas-x: 0;
+      appearance: none;
+      border: 0;
+      background-color: transparent;
+      background-image: url("assets/emotion-planet/garden-atlas.png");
+      background-image: image-set(
+        url("assets/emotion-planet/garden-atlas.webp") type("image/webp"),
+        url("assets/emotion-planet/garden-atlas.png") type("image/png")
+      );
+      background-size: 600% 200%;
+      background-repeat: no-repeat;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .history-flower {
+      width: 56px;
+      height: 56px;
+      padding: 0;
+      justify-self: center;
+      align-self: end;
+      background-position: calc(var(--atlas-x) * 20%) 0%;
+      filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.28));
+    }
+
+    .history-planet {
+      min-height: 128px;
+      padding: 72px 12px 12px;
+      border-radius: 8px;
+      background-color: rgba(255, 251, 242, 0.64);
+      background-position: calc(var(--atlas-x) * 20%) 100%;
+      background-size: 600% 200%;
+      box-shadow: inset 0 0 0 1px rgba(66, 48, 30, 0.1);
+      color: var(--paper-ink);
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+      white-space: normal;
+    }
+
+    .history-flower:focus-visible,
+    .history-planet:focus-visible {
+      outline: 2px solid rgba(141, 102, 69, 0.78);
+      outline-offset: 2px;
+    }
+
+    #appRoot[data-app-state="home-idle"] #travelerButton .traveler-sprite,
+    #appRoot[data-app-state="journal-dialogue"] #travelerButton .traveler-sprite,
+    #appRoot[data-app-state="journal-editing"] #travelerButton .traveler-sprite,
+    #appRoot[data-app-state="history-map"] #travelerButton .traveler-sprite {
+      opacity: 0;
+    }
+
+    .history-flower[data-mood="calm"],
+    .history-planet[data-mood="calm"] { --atlas-x: 0; }
+    .history-flower[data-mood="happy"],
+    .history-planet[data-mood="happy"] { --atlas-x: 1; }
+    .history-flower[data-mood="anxious"],
+    .history-planet[data-mood="anxious"] { --atlas-x: 2; }
+    .history-flower[data-mood="sad"],
+    .history-planet[data-mood="sad"] { --atlas-x: 3; }
+    .history-flower[data-mood="tired"],
+    .history-planet[data-mood="tired"] { --atlas-x: 4; }
+    .history-flower[data-mood="angry"],
+    .history-planet[data-mood="angry"] { --atlas-x: 5; }
+
+    /* Recent garden box on the home scene is replaced by the full garden scene. */
+    .recent-garden {
+      display: none;
+    }
+
+    /* === Memory scenes: 情绪花园 (recent) + 星象台 (full) === */
+    .memory-scene {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: clamp(56px, 9vh, 110px) 24px clamp(40px, 8vh, 80px);
+      overflow: auto;
+    }
+
+    .memory-scene-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .garden-bg {
+      background-image: url("assets/emotion-planet/garden-bg.png");
+      background-image: image-set(
+        url("assets/emotion-planet/garden-bg.webp") type("image/webp"),
+        url("assets/emotion-planet/garden-bg.png") type("image/png")
+      );
+      background-position: center;
+      background-size: cover;
+    }
+
+    /* Darken top (for the title) and bottom (so flowers read on the busy photo). */
+    .garden-bg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(6, 14, 9, 0.62) 0%,
+        rgba(6, 14, 9, 0.18) 32%,
+        rgba(6, 14, 9, 0.2) 60%,
+        rgba(6, 14, 9, 0.74) 100%
+      );
+    }
+
+    .garden-scene {
+      justify-content: space-between;
+    }
+
+    /* Wooden flower rack the mood flowers sit on. */
+    .garden-field {
+      position: relative;
+      align-items: flex-end;
+      gap: clamp(12px, 2vw, 28px);
+      margin-bottom: clamp(28px, 7vh, 78px);
+      padding: 16px clamp(22px, 4vw, 52px) 20px;
+      border: 1px solid #2f1e0f;
+      border-radius: 5px;
+      background:
+        repeating-linear-gradient(90deg, transparent 0 78px, rgba(34, 20, 8, 0.55) 78px 80px),
+        linear-gradient(180deg, rgba(255, 220, 170, 0.1), transparent 22%, transparent 78%, rgba(0, 0, 0, 0.18)),
+        linear-gradient(180deg, #835c34 0%, #67442464 48%, #533519 100%),
+        linear-gradient(180deg, #7a5530 0%, #623f22 48%, #4f3219 100%);
+      box-shadow:
+        inset 0 2px 0 rgba(255, 218, 168, 0.32),
+        inset 0 -10px 18px rgba(0, 0, 0, 0.45),
+        0 18px 34px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Front lip board, giving the shelf thickness. */
+    .garden-field::before {
+      content: "";
+      position: absolute;
+      left: -4px;
+      right: -4px;
+      bottom: -13px;
+      height: 16px;
+      border: 1px solid #2a1a0c;
+      border-radius: 4px;
+      background:
+        repeating-linear-gradient(90deg, rgba(38, 23, 10, 0.5) 0 1px, transparent 1px 9px),
+        linear-gradient(180deg, #6b4727 0%, #4a2f17 100%);
+      box-shadow: inset 0 2px 0 rgba(255, 214, 160, 0.22), 0 10px 18px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Small end brackets holding the rack up. */
+    .garden-field::after {
+      content: "";
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: -30px;
+      height: 18px;
+      background:
+        linear-gradient(135deg, transparent 0 6px, #4a2f17 6px 14px, transparent 14px) left / 22px 100% no-repeat,
+        linear-gradient(225deg, transparent 0 6px, #4a2f17 6px 14px, transparent 14px) right / 22px 100% no-repeat;
+      pointer-events: none;
+    }
+
+    .starmap-bg {
+      background-image: url("assets/emotion-planet/starmap-bg.png");
+      background-image: image-set(
+        url("assets/emotion-planet/starmap-bg.webp") type("image/webp"),
+        url("assets/emotion-planet/starmap-bg.png") type("image/png")
+      );
+      background-position: center;
+      background-size: cover;
+    }
+
+    /* Looping night-sky video sits under the scene content. */
+    .starmap-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .starmap-bg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(4, 8, 18, 0.32), rgba(4, 8, 18, 0.74));
+    }
+
+    .memory-scene > :not(.memory-scene-bg):not(.memory-back) {
+      position: relative;
+      z-index: 1;
+    }
+
+    .memory-header {
+      margin-bottom: clamp(24px, 5vh, 48px);
+      text-align: center;
+      color: var(--text);
+    }
+
+    .memory-header .paper-kicker {
+      color: var(--accent);
+    }
+
+    .memory-header h1 {
+      margin: 0.18em 0 0.12em;
+      font-family: var(--font-hand);
+      font-weight: 400;
+      font-size: clamp(34px, 5vw, 54px);
+      letter-spacing: 2px;
+      line-height: 1.1;
+    }
+
+    .memory-sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .memory-field {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: center;
+      gap: clamp(16px, 2.4vw, 30px);
+      width: 100%;
+      max-width: 960px;
+    }
+
+    .starmap-field {
+      align-items: flex-start;
+      gap: clamp(18px, 3vw, 40px);
+    }
+
+    /* Planets float on the night sky instead of sitting in light cards. */
+    .starmap-field .history-planet {
+      border-radius: 0;
+      background-color: transparent;
+      box-shadow: none;
+      color: rgba(245, 247, 255, 0.92);
+      font-size: 12px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+      filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.5));
+    }
+
+    .starmap-field .history-planet:hover,
+    .starmap-field .history-planet:focus-visible {
+      color: #fff;
+      filter: drop-shadow(0 0 14px rgba(255, 224, 160, 0.5));
+    }
+
+    .memory-empty {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Bigger flowers inside the dedicated garden scene */
+    .garden-field .history-flower {
+      width: clamp(64px, 9vw, 92px);
+      height: clamp(64px, 9vw, 92px);
+    }
+
+    .memory-back {
+      position: absolute;
+      top: max(20px, calc(env(safe-area-inset-top) + 10px));
+      left: max(20px, calc(env(safe-area-inset-left) + 10px));
+      z-index: 2;
+      min-height: 44px;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(4, 10, 22, 0.6);
+      color: var(--text);
+      font-family: var(--font-serif);
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: border-color 160ms ease, background-color 160ms ease;
+    }
+
+    .memory-back:hover,
+    .memory-back:focus-visible {
+      border-color: rgba(255, 243, 198, 0.55);
+      background: rgba(8, 16, 30, 0.78);
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      z-index: 5;
+      transform: translateX(-50%);
+      min-width: 160px;
+      max-width: calc(100vw - 36px);
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(7, 14, 28, 0.92);
+      color: var(--text);
+      text-align: center;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .toast.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #journalLayer {
+      justify-items: end;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .journal-panel {
+      position: relative;
+      width: min(520px, 42vw, calc(100vw - 48px));
+      max-height: min(720px, calc(100svh - 24px));
+      padding: 100px 86px 110px 108px;
+      overflow: auto;
+      border: 0;
+      background-color: transparent;
+      background-image: url("assets/emotion-planet/scroll-frame.png");
+      background-image: image-set(
+        url("assets/emotion-planet/scroll-frame.webp") type("image/webp"),
+        url("assets/emotion-planet/scroll-frame.png") type("image/png")
+      );
+      background-position: center;
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      filter: drop-shadow(0 26px 46px rgba(0, 0, 0, 0.5));
+      color: var(--paper-ink);
+      font-family: var(--font-serif);
+      scrollbar-gutter: stable;
+    }
+
+    .journal-panel > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .journal-panel .layer-close {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      z-index: 2;
+    }
+
+    .journal-step {
+      display: grid;
+      gap: 16px;
+      animation: step-turn 360ms ease both;
+    }
+
+    .journal-step .journal-title {
+      margin-bottom: 0;
+    }
+
+    .journal-step .journal-prompt {
+      margin: -4px 0 2px;
+    }
+
+    #appRoot[data-journal-step="mood"] .journal-step[data-step="write"],
+    #appRoot[data-journal-step="write"] .journal-step[data-step="mood"] {
+      display: none;
+    }
+
+    .step-back {
+      justify-self: start;
+      margin-bottom: -2px;
+      padding: 4px 2px;
+      border: 0;
+      background: transparent;
+      color: var(--paper-accent);
+      font-family: var(--font-serif);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .step-back:hover,
+    .step-back:focus-visible {
+      color: var(--paper-ink);
+    }
+
+    @keyframes step-turn {
+      from {
+        opacity: 0;
+        transform: translateX(14px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .journal-topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .paper-kicker {
+      margin: 0;
+      color: var(--paper-accent);
+      font-family: var(--font-latin);
+      font-size: 17px;
+      font-style: italic;
+      line-height: 1.3;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .journal-title {
+      margin: 0 0 8px;
+      color: var(--paper-ink);
+      font-family: var(--font-hand);
+      font-weight: 400;
+      font-size: clamp(28px, 3.6vw, 32px);
+      letter-spacing: 1px;
+      line-height: 1.16;
+    }
+
+    .journal-prompt {
+      margin: 0 0 16px;
+      color: var(--paper-muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    #journalForm {
+      display: grid;
+      gap: 12px;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 280ms ease, transform 280ms ease;
+    }
+
+    #appRoot[data-app-state="journal-dialogue"] #journalForm {
+      opacity: 0.72;
+      transform: translateY(8px);
+      pointer-events: none;
+    }
+
+    .soft-button:disabled,
+    .primary-button:disabled,
+    .secondary-button:disabled,
+    .layer-close:disabled,
+    .mood-star:disabled,
+    .journey-button:disabled,
+    #diaryText:disabled {
+      cursor: default;
+      border-color: rgba(66, 48, 30, 0.14);
+      background: rgba(176, 166, 151, 0.28);
+      color: rgba(46, 38, 28, 0.48);
+      box-shadow: none;
+      opacity: 0.6;
+    }
+
+    .mood-orbit {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
     }
 
-    .mood-option {
-      min-height: 76px;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.7);
-      color: var(--ink);
-      cursor: pointer;
-      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
-    }
-
-    .mood-option:hover,
-    .mood-option.is-selected {
-      transform: translateY(-2px);
-      border-color: var(--blue);
-      background: #ffffff;
-    }
-
-    .mood-option span {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: 6px;
-    }
-
-    /* Module 3: Diary Input */
-    .diary-form {
-      margin-top: 22px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 9px;
-      font-weight: 700;
-    }
-
-    input,
-    textarea {
+    .mood-star,
+    .journey-button,
+    #diaryText {
       width: 100%;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.8);
-      color: var(--ink);
-      line-height: 1.75;
-      outline: none;
     }
 
-    textarea {
-      min-height: 162px;
-      resize: vertical;
-    }
-
-    input {
-      min-height: 44px;
-    }
-
-    input:focus,
-    textarea:focus {
-      border-color: var(--blue);
-      box-shadow: 0 0 0 3px rgba(109, 144, 185, 0.18);
-    }
-
-    .action-row {
+    .mood-star {
       display: flex;
-      gap: 10px;
-      margin-top: 14px;
-      flex-wrap: wrap;
-    }
-
-    .primary-btn,
-    .secondary-btn {
-      min-height: 44px;
-      padding: 0 18px;
-      border: 1px solid transparent;
-      border-radius: 8px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 50px;
+      padding: 6px 10px;
+      border: 1px solid rgba(120, 88, 52, 0.3);
+      border-radius: 999px;
+      background: rgba(255, 249, 232, 0.48);
+      color: var(--paper-ink);
+      font-family: var(--font-serif);
+      font-size: 15px;
+      letter-spacing: 0.5px;
       cursor: pointer;
-      transition: transform 160ms ease, opacity 160ms ease;
+      transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
     }
 
-    .primary-btn {
-      background: #2d3b45;
-      color: #fff;
+    .mood-dot {
+      flex: 0 0 auto;
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      background: var(--mood-color, #9a8a6a);
+      box-shadow: 0 0 0 2px rgba(255, 250, 236, 0.7), 0 1px 3px rgba(0, 0, 0, 0.25);
     }
 
-    .secondary-btn {
-      background: rgba(255, 255, 255, 0.65);
-      border-color: var(--line);
-      color: var(--ink);
-    }
+    .mood-star[data-mood="calm"] { --mood-color: #6f9a86; }
+    .mood-star[data-mood="happy"] { --mood-color: #e0a52e; }
+    .mood-star[data-mood="anxious"] { --mood-color: #8a6cc4; }
+    .mood-star[data-mood="sad"] { --mood-color: #5b82aa; }
+    .mood-star[data-mood="tired"] { --mood-color: #9a8f72; }
+    .mood-star[data-mood="angry"] { --mood-color: #bb5a3f; }
 
-    .primary-btn:hover,
-    .secondary-btn:hover {
+    .mood-star:hover,
+    .mood-star:focus-visible {
+      border-color: rgba(141, 102, 69, 0.6);
+      background: rgba(255, 250, 238, 0.92);
       transform: translateY(-1px);
     }
 
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.45;
-      transform: none;
+    .mood-star.is-selected {
+      border-color: rgba(141, 102, 69, 0.9);
+      background: rgba(255, 238, 200, 0.97);
+      box-shadow: inset 0 0 0 1px rgba(141, 102, 69, 0.3), 0 6px 14px rgba(120, 88, 52, 0.2);
     }
 
-    /* Module 4: AI Emotion Analysis */
-    .analysis-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+    .mood-star.is-selected .mood-dot {
+      box-shadow: 0 0 0 3px rgba(255, 250, 236, 0.9), 0 0 10px var(--mood-color);
     }
 
-    .insight {
-      min-height: 118px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.64);
-    }
-
-    .insight b {
+    .journal-label {
       display: block;
-      margin-bottom: 8px;
+      color: var(--paper-ink);
       font-size: 14px;
+      line-height: 1.4;
+      font-weight: 600;
     }
 
-    .insight p {
-      margin: 0;
-      color: #535b67;
-      line-height: 1.7;
-    }
-
-    /* Module 5: Resonance Card */
-    .resonance-card {
-      margin-top: 18px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.85);
-      border-radius: 8px;
-      background: #f9f5ed;
-    }
-
-    .resonance-card[data-mood="happy"] {
-      background: linear-gradient(150deg, #fff2bd, #f5ffdf 70%);
-    }
-
-    .resonance-card[data-mood="calm"] {
-      background: linear-gradient(150deg, #e7f5ef, #d7eafa 72%);
-    }
-
-    .resonance-card[data-mood="anxious"] {
-      background: linear-gradient(150deg, #e8ebf5, #dfe7ef 72%);
-    }
-
-    .resonance-card[data-mood="sad"] {
-      background: linear-gradient(150deg, #edf0f8, #efe7f3 72%);
-    }
-
-    .resonance-card[data-mood="tired"] {
-      background: linear-gradient(150deg, #f3eee7, #e9eff0 72%);
-    }
-
-    .resonance-card[data-mood="angry"] {
-      background: linear-gradient(150deg, #ffe5d7, #f8e8ec 72%);
-    }
-
-    .visual-stage {
-      position: relative;
-      overflow: hidden;
-      display: block;
-      background:
-        linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px) 0 0 / 42px 42px,
-        linear-gradient(180deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px) 0 0 / 42px 42px;
-    }
-
-    .mood-art-frame {
-      position: relative;
-      margin: 26px;
-      aspect-ratio: 1;
-      max-width: min(560px, calc(100% - 52px));
-      min-height: 0;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.78);
-      box-shadow: 0 22px 48px rgba(31, 43, 47, 0.18);
-      background: #f5efe5;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .mood-art {
-      width: 100%;
-      height: 100%;
-      background-image: url("assets/mood-visual-sheet.png");
-      background-repeat: no-repeat;
-      background-size: 300% 200%;
-      background-position: 0% 0%;
-      transform: scale(1.01);
-    }
-
-    .mood-art[data-mood="happy"] {
-      background-position: 50% 0%;
-    }
-
-    .mood-art[data-mood="anxious"] {
-      background-position: 100% 0%;
-    }
-
-    .mood-art[data-mood="sad"] {
-      background-position: 0% 100%;
-    }
-
-    .mood-art[data-mood="tired"] {
-      background-position: 50% 100%;
-    }
-
-    .mood-art[data-mood="angry"] {
-      background-position: 100% 100%;
-    }
-
-    .art-meta {
-      display: grid;
-      align-content: end;
-      gap: 12px;
-      padding: 26px 22px 26px 0;
-    }
-
-    .art-chip {
-      padding: 12px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.62);
-      border: 1px solid rgba(255, 255, 255, 0.7);
-      color: #4f5664;
-      line-height: 1.5;
-      font-size: 13px;
-    }
-
-    .art-chip b {
-      display: block;
-      margin-bottom: 4px;
-      color: var(--ink);
-      font-size: 14px;
-    }
-
-    .result-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 16px;
-    }
-
-    .sky,
-    .ground,
-    .lake,
-    .moon,
-    .sun,
-    .cloud,
-    .rain,
-    .capybara,
-    .cup,
-    .flower,
-    .boat,
-    .lamp,
-    .flame,
-    .thread {
-      position: absolute;
-    }
-
-    .sky {
-      inset: 0;
-    }
-
-    .ground {
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 80px;
-      background: rgba(124, 170, 141, 0.2);
-    }
-
-    .lake {
-      left: 32px;
-      right: 32px;
-      bottom: 34px;
-      height: 46px;
-      border-radius: 50%;
-      background: rgba(109, 144, 185, 0.28);
-      box-shadow: inset 0 10px 22px rgba(255, 255, 255, 0.42);
-    }
-
-    .sun {
-      width: 74px;
-      height: 74px;
-      border-radius: 50%;
-      top: 35px;
-      right: 52px;
-      background: #f5c453;
-      box-shadow: 0 0 36px rgba(245, 196, 83, 0.5);
-    }
-
-    .moon {
-      width: 76px;
-      height: 76px;
-      border-radius: 50%;
-      top: 34px;
-      right: 54px;
-      background: #f6f1d8;
-      box-shadow: inset -18px 2px 0 rgba(140, 123, 184, 0.24);
-    }
-
-    .cloud {
-      width: 128px;
-      height: 42px;
-      border-radius: 999px;
-      top: 46px;
-      left: 44px;
-      background: rgba(255, 255, 255, 0.78);
-    }
-
-    .cloud::before,
-    .cloud::after {
-      content: "";
-      position: absolute;
-      border-radius: 50%;
-      background: inherit;
-    }
-
-    .cloud::before {
-      width: 66px;
-      height: 66px;
-      left: 18px;
-      top: -30px;
-    }
-
-    .cloud::after {
-      width: 54px;
-      height: 54px;
-      right: 18px;
-      top: -22px;
-    }
-
-    .rain {
-      left: 82px;
-      top: 94px;
-      width: 80px;
-      height: 92px;
-      background:
-        linear-gradient(105deg, transparent 0 38%, rgba(109, 144, 185, 0.75) 39% 43%, transparent 44%) 0 0 / 24px 42px;
-    }
-
-    .capybara {
-      width: 136px;
-      height: 74px;
-      left: 50%;
-      bottom: 58px;
-      transform: translateX(-50%);
-      border-radius: 52px 58px 42px 44px;
-      background: #a37b58;
-      box-shadow: inset -14px -8px 0 rgba(75, 55, 42, 0.12);
-    }
-
-    .capybara::before {
-      content: "";
-      position: absolute;
-      width: 56px;
-      height: 48px;
-      right: -22px;
-      top: 12px;
-      border-radius: 42px;
-      background: #a37b58;
-    }
-
-    .capybara::after {
-      content: "";
-      position: absolute;
-      width: 7px;
-      height: 7px;
-      right: -3px;
-      top: 27px;
-      border-radius: 50%;
-      background: #2d2520;
-      box-shadow: 20px 12px 0 -2px #6d4d3a;
-    }
-
-    .cup {
-      width: 68px;
-      height: 54px;
-      left: 50%;
-      bottom: 62px;
-      transform: translateX(-50%);
-      border-radius: 0 0 18px 18px;
-      background: #f8fbff;
-      border: 5px solid rgba(109, 144, 185, 0.52);
-    }
-
-    .cup::after {
-      content: "";
-      position: absolute;
-      width: 22px;
-      height: 24px;
-      right: -26px;
-      top: 11px;
-      border: 5px solid rgba(109, 144, 185, 0.52);
-      border-left: 0;
-      border-radius: 0 18px 18px 0;
-    }
-
-    .flower {
-      left: 50%;
-      bottom: 60px;
-      width: 14px;
-      height: 72px;
-      background: #6d9b70;
-      transform: translateX(-50%);
-    }
-
-    .flower::before {
-      content: "";
-      position: absolute;
-      width: 74px;
-      height: 74px;
-      left: -30px;
-      top: -50px;
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at center, #d99b50 0 12px, transparent 13px),
-        radial-gradient(circle at 50% 0, #ef8b92 0 16px, transparent 17px),
-        radial-gradient(circle at 100% 50%, #ef8b92 0 16px, transparent 17px),
-        radial-gradient(circle at 50% 100%, #ef8b92 0 16px, transparent 17px),
-        radial-gradient(circle at 0 50%, #ef8b92 0 16px, transparent 17px);
-    }
-
-    .boat {
-      left: 50%;
-      bottom: 70px;
-      width: 116px;
-      height: 56px;
-      transform: translateX(-50%);
-      background: #f7f1dd;
-      clip-path: polygon(0 42%, 50% 100%, 100% 42%, 50% 58%);
-      filter: drop-shadow(0 10px 14px rgba(42, 48, 58, 0.16));
-    }
-
-    .lamp {
-      left: 50%;
-      bottom: 54px;
-      width: 100px;
-      height: 128px;
-      transform: translateX(-50%);
-    }
-
-    .lamp::before {
-      content: "";
-      position: absolute;
-      left: 18px;
-      top: 0;
-      width: 64px;
-      height: 44px;
-      background: #d99b50;
-      clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
-      opacity: 0.74;
-    }
-
-    .lamp::after {
-      content: "";
-      position: absolute;
-      left: 46px;
-      top: 44px;
-      width: 8px;
-      height: 70px;
-      background: #7d8794;
-      box-shadow: -28px 70px 0 8px #7d8794, 28px 70px 0 8px #7d8794;
-    }
-
-    .flame {
-      left: 50%;
-      bottom: 58px;
-      width: 96px;
-      height: 130px;
-      transform: translateX(-50%);
-      border-radius: 62% 38% 58% 42%;
-      background: #e15f48;
-      box-shadow: inset 18px -16px 0 #f5a24d;
-    }
-
-    .flame::after {
-      content: "";
-      position: absolute;
-      left: 32px;
-      bottom: 18px;
-      width: 34px;
-      height: 58px;
-      border-radius: 56% 44% 60% 40%;
-      background: #ffdf82;
-    }
-
-    .thread {
-      left: 50%;
-      bottom: 70px;
-      width: 124px;
-      height: 104px;
-      transform: translateX(-50%);
-      border: 8px solid rgba(140, 123, 184, 0.7);
-      border-radius: 53% 47% 58% 42%;
-    }
-
-    .thread::before,
-    .thread::after {
-      content: "";
-      position: absolute;
-      border: 7px solid rgba(140, 123, 184, 0.62);
-      border-radius: 50%;
-    }
-
-    .thread::before {
-      inset: 18px 10px 20px 24px;
-      transform: rotate(28deg);
-    }
-
-    .thread::after {
-      width: 86px;
-      height: 42px;
-      left: 14px;
-      top: 26px;
-      transform: rotate(-22deg);
-    }
-
-    .card-copy {
-      display: grid;
-      grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
-      gap: 18px;
-      padding: 22px;
-      background: rgba(255, 255, 255, 0.72);
-      border-top: 1px solid rgba(255, 255, 255, 0.86);
-    }
-
-    .quote {
-      margin: 0;
-      font-family: Georgia, "Songti SC", serif;
+    #diaryText {
+      min-height: 138px;
+      padding: 5px 12px;
+      border: 0;
+      border-radius: 0;
+      background-color: rgba(255, 252, 244, 0.16);
+      background-image: repeating-linear-gradient(
+        rgba(120, 88, 52, 0) 0,
+        rgba(120, 88, 52, 0) 31px,
+        rgba(120, 88, 52, 0.22) 31px,
+        rgba(120, 88, 52, 0.22) 32px
+      );
+      box-shadow: inset 0 -1px 0 rgba(92, 62, 32, 0.18);
+      color: var(--paper-ink);
+      resize: vertical;
+      font-family: var(--font-hand);
       font-size: 22px;
-      line-height: 1.55;
+      line-height: 32px;
     }
 
-    .source {
-      display: block;
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 13px;
-      font-family: Inter, "PingFang SC", sans-serif;
+    #diaryText::placeholder {
+      color: rgba(82, 68, 54, 0.72);
     }
 
-    .metaphor-title {
-      margin: 0 0 8px;
-      font-weight: 800;
+    #diaryText[aria-invalid="true"] {
+      border-color: rgba(156, 71, 60, 0.72);
+      box-shadow: 0 0 0 1px rgba(156, 71, 60, 0.14);
     }
 
-    .ai-note {
-      margin: 0;
-      color: #4f5664;
-      line-height: 1.75;
-    }
-
-    /* Module 6: Diary History */
-    .access-token-panel {
-      display: grid;
-      gap: 10px;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.56);
-    }
-
-    .access-token-row {
+    .journal-meta {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: end;
+      gap: 8px 12px;
+      align-items: start;
+      min-height: 40px;
     }
 
-    .history-list {
-      display: grid;
-      gap: 10px;
-      margin-top: 14px;
+    #journalError {
+      min-height: 20px;
+      color: var(--danger);
+      font-size: 13px;
+      line-height: 1.45;
     }
 
-    .history-item {
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.6);
+    #characterCount {
+      min-width: 56px;
+      color: var(--paper-muted);
+      font-size: 13px;
+      line-height: 1.45;
+      text-align: right;
+      white-space: nowrap;
     }
 
-    .history-item strong {
-      display: block;
-      margin-bottom: 6px;
+    .journey-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 54px;
+      padding: 0 18px;
+      border: 1px solid rgba(74, 52, 30, 0.55);
+      border-radius: 10px;
+      background: linear-gradient(135deg, #7a5736 0%, #9c764b 52%, #855e39 100%);
+      color: #fff7e8;
+      cursor: pointer;
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      box-shadow: 0 8px 18px rgba(96, 66, 34, 0.34), inset 0 1px 0 rgba(255, 246, 224, 0.35);
+      transition: filter 180ms ease, transform 180ms ease, box-shadow 180ms ease;
     }
 
-    .history-item p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.55;
+    .journey-button:hover,
+    .journey-button:focus-visible {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(96, 66, 34, 0.4), inset 0 1px 0 rgba(255, 246, 224, 0.35);
     }
 
-    .empty-state {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.65;
+    .btn-icon {
+      font-size: 17px;
+      line-height: 1;
     }
 
-    /* Module 7: Prototype Comments */
-    .prototype-comments {
-      margin-top: 22px;
-      border-radius: 8px;
-      padding: 22px 24px;
+    .mood-profiles {
+      display: none;
     }
 
-    .comment-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 14px;
+    @keyframes spot-pulse {
+      0%,
+      100% {
+        opacity: 0.55;
+        transform: translate(-50%, -50%) scale(0.92);
+      }
+
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.12);
+      }
     }
 
-    .comment-card {
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.62);
-      color: #535b67;
-      line-height: 1.6;
-      font-size: 14px;
+    @keyframes hint-appear {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
     }
 
-    .comment-card b {
-      display: block;
-      margin-bottom: 6px;
-      color: var(--ink);
+    @keyframes hint-breathe {
+      0%,
+      100% {
+        opacity: 0.82;
+      }
+
+      50% {
+        opacity: 0.12;
+      }
     }
 
-    @media (max-width: 900px) {
-      .app-header,
-      .workspace,
-      .card-copy {
+    @keyframes starmap-glow {
+      0%,
+      100% {
+        filter: brightness(1) saturate(1);
+      }
+
+      50% {
+        filter: brightness(1.1) saturate(1.12);
+      }
+    }
+
+    @keyframes starmap-twinkle {
+      0%,
+      100% {
+        opacity: 0.28;
+      }
+
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    @keyframes hint-glow {
+      0%,
+      100% {
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(255, 216, 138, 0.06);
+      }
+
+      50% {
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45), 0 0 0 6px rgba(255, 216, 138, 0.22);
+      }
+    }
+
+    @keyframes home-planet-float {
+      0%,
+      100% {
+        transform: translate3d(0, 0, 0) scale(1.015);
+      }
+
+      50% {
+        transform: translate3d(0, -10px, 0) scale(1.025);
+      }
+    }
+
+    @keyframes scene-drift-far {
+      from {
+        transform: translate3d(-0.8%, -0.4%, 0) scale(1.01);
+        opacity: 0.62;
+      }
+
+      to {
+        transform: translate3d(0.8%, 0.6%, 0) scale(1.025);
+        opacity: 0.9;
+      }
+    }
+
+    @keyframes scene-drift-near {
+      from {
+        transform: translate3d(0, 0.6%, 0) scale(1.02);
+        opacity: 0.72;
+      }
+
+      to {
+        transform: translate3d(-1%, -0.6%, 0) scale(1.045);
+        opacity: 1;
+      }
+    }
+
+    @keyframes traveler-idle {
+      0%,
+      100% {
+        transform: translate(-50%, -50%) translateY(0) scale(1);
+        opacity: 0.7;
+      }
+
+      50% {
+        transform: translate(-50%, -50%) translateY(-4px) scale(1.04);
+        opacity: 1;
+      }
+    }
+
+    @keyframes resonance-float {
+      0%,
+      100% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+
+      50% {
+        transform: translate3d(0, -10px, 0) scale(1.012);
+      }
+    }
+
+    @keyframes resonance-arrive {
+      from {
+        transform: translate3d(0, 18px, 0) scale(0.86);
+        opacity: 0;
+      }
+
+      to {
+        transform: translate3d(0, 0, 0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes card-arrive {
+      from {
+        transform: var(--card-rest-transform) translate3d(24px, 0, 0);
+        opacity: 0;
+      }
+
+      to {
+        transform: var(--card-rest-transform) translate3d(0, 0, 0);
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .home-planet-layer {
+        background-image: url("assets/emotion-planet/home-planet-mobile.png");
+        background-image: image-set(
+          url("assets/emotion-planet/home-planet-mobile.webp") type("image/webp"),
+          url("assets/emotion-planet/home-planet-mobile.png") type("image/png")
+        );
+        background-position: center top;
+      }
+
+      .hud {
+        top: max(12px, calc(env(safe-area-inset-top) + 6px));
+        left: max(12px, calc(env(safe-area-inset-left) + 6px));
+      }
+
+      .garden-button {
+        top: clamp(150px, 36%, 300px);
+        left: clamp(12px, 4%, 60px);
+        width: clamp(104px, 30vw, 140px);
+        height: clamp(104px, 30vw, 140px);
+      }
+
+      .observatory-button {
+        top: clamp(120px, 26%, 220px);
+        right: clamp(12px, 4%, 60px);
+        width: clamp(104px, 30vw, 140px);
+        height: clamp(104px, 30vw, 140px);
+      }
+
+      .traveler-button {
+        top: clamp(148px, 38%, 256px);
+        left: 56%;
+        width: clamp(68px, 18vw, 78px);
+        height: clamp(164px, 44vw, 188px);
+      }
+
+      .traveler-aura {
+        top: clamp(148px, 38%, 256px);
+        left: 56%;
+      }
+
+      .landmark-button .spot-hint {
+        width: min(190px, 42vw);
+        height: 88px;
+        padding: 14px 28px 16px;
+        gap: 1px;
+        animation: none;
+        opacity: 0.92;
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+      }
+
+      .landmark-button .spot-hint strong {
+        font-size: 13px;
+      }
+
+      .landmark-button .spot-hint small {
+        font-size: 10px;
+        line-height: 1.25;
+      }
+
+      .landmark-button .spot-hint .enter-button {
+        margin-top: 3px;
+        min-height: 24px;
+        padding: 4px 12px;
+        font-size: 11px;
+      }
+
+      .diary-hint {
+        top: clamp(330px, 58%, 520px);
+        left: 50%;
+        width: min(270px, calc(100vw - 28px));
+        height: 126px;
+        padding: 20px 44px 22px;
+        animation: none;
+        opacity: 0.94;
+      }
+
+      .companion-dialogue {
+        right: 12px;
+        bottom: max(12px, calc(env(safe-area-inset-bottom) + 6px));
+        left: 12px;
+        width: auto;
+      }
+
+      .recent-garden {
+        right: 12px;
+        left: 12px;
+        bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
+        width: auto;
+        min-height: 122px;
+      }
+
+      #journalLayer {
+        align-items: end;
+        justify-items: center;
+        padding: max(12px, calc(env(safe-area-inset-top) + 12px)) 0 0;
+      }
+
+      .journal-panel {
+        width: min(430px, calc(100% - 20px));
+        max-height: calc(100svh - 20px);
+        padding: clamp(58px, 14vw, 76px) clamp(70px, 18vw, 92px) clamp(70px, 16vw, 88px);
+        overflow: auto;
+      }
+
+      #journalForm {
+        width: 100%;
+        max-width: 292px;
+        justify-self: center;
+      }
+
+      .journal-title {
+        font-size: clamp(24px, 7vw, 30px);
+        line-height: 1.12;
+      }
+
+      .journal-prompt {
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .mood-orbit {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 12px;
+      }
+
+      .mood-star {
+        min-height: 46px;
+        padding: 6px;
+        font-size: 13px;
+      }
+
+      #diaryText {
+        min-height: 132px;
+        font-size: 20px;
+        line-height: 30px;
+      }
+
+      .journey-button {
+        min-height: 48px;
+        padding: 0 14px;
+        font-size: 14px;
+        line-height: 1.25;
+      }
+
+      .analysis-grid {
         grid-template-columns: 1fr;
       }
 
-      .date-pill {
-        text-align: left;
+      .resonance-companion {
+        top: auto;
+        left: 50%;
+        right: auto;
+        bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px));
+        grid-template-columns: 1fr;
+        justify-items: center;
+        width: min(360px, calc(100vw - 24px));
+        max-width: calc(100vw - 24px);
+        transform: translateX(-50%);
       }
 
-      .comment-grid {
+      .resonance-companion .traveler-sprite {
+        display: none;
+      }
+
+      .resonance-companion .companion-dialogue {
+        left: auto;
+        right: auto;
+        bottom: auto;
+        width: min(360px, 100%);
+        text-align: center;
+      }
+
+      .resonance-world {
+        place-items: start center;
+        padding: clamp(16px, 6vw, 28px);
+      }
+
+      .resonance-world::before {
+        width: min(92vw, 520px);
+        max-width: none;
+      }
+
+      .resonance-card {
+        --card-rest-transform: none;
+        inset: 10px;
+        bottom: auto;
+        width: calc(100% - 20px);
+        height: calc(100svh - 20px);
+        transform: none;
+        max-height: calc(100svh - 20px);
+        padding: 72px 48px calc(96px + env(safe-area-inset-bottom));
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      .history-panel {
+        width: calc(100% - 20px);
+        max-height: calc(100svh - 20px);
+        padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+        overflow: auto;
+      }
+
+      .history-map {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .art-meta {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        padding: 0 26px 26px;
+      .card-actions {
+        grid-template-columns: 1fr;
       }
     }
 
-    @media (max-width: 620px) {
-      .app-shell {
-        width: min(100% - 22px, 1160px);
-        padding: 16px 0;
+    @media (max-height: 620px) {
+      .landmark-button {
+        width: clamp(78px, 21vw, 96px);
+        height: clamp(78px, 21vw, 96px);
       }
 
-      .app-header,
-      .panel,
-      .prototype-comments {
-        padding: 18px;
+      .landmark-label {
+        bottom: 4px;
+        padding: 5px 8px;
+        font-size: 11px;
       }
 
-      .mood-grid,
-      .analysis-grid,
-      .comment-grid,
-      .flow-steps {
+      .garden-button {
+        top: clamp(82px, 22%, 132px);
+      }
+
+      .observatory-button {
+        top: clamp(88px, 24%, 142px);
+      }
+
+      .traveler-button {
+        top: clamp(132px, 35%, 204px);
+        width: 64px;
+        height: 154px;
+      }
+
+      .traveler-aura {
+        top: clamp(132px, 35%, 204px);
+        left: 56%;
+      }
+
+      .journal-landmark {
+        top: auto;
+        bottom: max(86px, calc(env(safe-area-inset-bottom) + 48px));
+        width: 84px;
+        height: 84px;
+      }
+
+      .companion-dialogue {
+        padding: 12px;
+      }
+
+      .companion-dialogue h2,
+      .panel h2 {
+        font-size: 16px;
+      }
+
+      .companion-dialogue p,
+      .panel p {
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .journal-panel {
+        max-height: calc(100svh - 16px);
+        padding: 52px 64px 58px;
+      }
+
+      .journal-title {
+        font-size: 24px;
+      }
+
+      .resonance-card h1 {
+        font-size: 26px;
+      }
+
+      .mood-star {
+        min-height: 44px;
+      }
+
+      #diaryText {
+        min-height: 132px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .mood-orbit {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .journal-meta {
         grid-template-columns: 1fr;
       }
 
-      .mood-art-frame {
-        margin: 18px auto;
-        max-width: min(330px, calc(100% - 36px));
+      #characterCount {
+        text-align: left;
       }
+    }
 
-      .art-meta {
-        grid-template-columns: 1fr;
-        padding: 0 18px 18px;
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 40ms !important;
+        scroll-behavior: auto !important;
       }
     }
   </style>
 </head>
 <body>
-  <main class="app-shell" id="appRoot">
-    <nav class="top-nav" aria-label="Prototype navigation">
-      <div class="brand-lockup"><span class="brand-mark">M</span>Mood Mirror</div>
-      <div class="nav-links">
-        <span>Journal</span>
-        <span>Insight</span>
-        <span>Resonance Card</span>
-      </div>
-    </nav>
+  <main id="appRoot" class="planet-app" data-app-state="home-idle" data-traveler-motion="idle" data-journal-step="mood">
+    <section id="homeScene" class="scene home-scene is-active" aria-label="主星球家园">
+      <div class="home-planet-layer" aria-hidden="true"></div>
+      <div class="star-field" aria-hidden="true"></div>
+      <div class="home-depth-layer home-depth-layer--far" aria-hidden="true"></div>
+      <div class="home-depth-layer home-depth-layer--near" aria-hidden="true"></div>
 
-    <!-- Module 1: App Header -->
-    <header class="app-header surface">
-      <div>
-        <p class="eyebrow">Mood Journal Prototype</p>
-        <h1>AI 情绪日记</h1>
-        <p class="intro">写下今天发生的事，让 AI 帮你整理情绪、匹配一句真实诗词，并生成一张可以被看见的今日共鸣卡。</p>
+      <div class="hud" aria-label="应用信息">
+        <span class="hud-mark" aria-hidden="true"></span>
+        <span class="hud-copy">
+          <strong>Mood Mirror</strong>
+          <span>情绪星球</span>
+        </span>
       </div>
-      <div class="hero-preview">
-        <div class="date-pill" aria-label="今日日期">
-          <span>今天</span>
-          <strong id="todayLabel">6 月 18 日</strong>
-        </div>
-        <div class="micro-card">
-          <span class="micro-icon" aria-hidden="true"></span>
-          <div>
-            <b>Prototype Goal</b>
-            <span>验证“记录情绪 → AI 分析 → 视觉共鸣”的核心体验。</span>
+
+      <section class="access-token-panel" id="accessTokenPanel" aria-label="日记访问口令">
+        <button class="token-toggle" id="tokenToggle" type="button" aria-expanded="false" aria-controls="tokenForm">
+          <span class="token-dot" id="tokenDot" aria-hidden="true"></span>
+          <span id="tokenToggleLabel">访问口令</span>
+        </button>
+        <form class="token-form" id="tokenForm" hidden>
+          <label class="token-label" for="accessTokenInput">日记访问口令</label>
+          <div class="token-row">
+            <input id="accessTokenInput" type="password" autocomplete="current-password" placeholder="输入口令后可读取和保存">
+            <button class="token-save" id="saveAccessTokenBtn" type="submit">连接</button>
           </div>
-        </div>
-      </div>
-    </header>
-
-    <section class="flow-steps" aria-label="使用流程">
-      <div class="flow-step is-active" id="step-input">
-        <span class="step-number">1</span>
-        <div class="flow-copy">
-          <strong>今日记录</strong>
-          <span>选择心情并写下今天的片段</span>
-        </div>
-      </div>
-      <div class="flow-step" id="step-result">
-        <span class="step-number">2</span>
-        <div class="flow-copy">
-          <strong>AI 分析与共鸣卡</strong>
-          <span>生成诗句、分析和视觉意象</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="workspace">
-      <section class="panel surface" aria-labelledby="inputTitle">
-        <div class="panel-title">
-          <div>
-            <h2 id="inputTitle">今日记录</h2>
-            <p class="hint">先选择最接近的心情，再写下一个片段。</p>
-          </div>
-        </div>
-
-        <!-- Module 2: Mood Selector -->
-        <div class="mood-grid" id="moodGrid" role="listbox" aria-label="选择心情">
-          <button class="mood-option is-selected" type="button" data-mood="calm">平静<span>像湖面慢慢亮起来</span></button>
-          <button class="mood-option" type="button" data-mood="happy">开心<span>有一点轻盈和期待</span></button>
-          <button class="mood-option" type="button" data-mood="anxious">焦虑<span>脑子里有很多未完成</span></button>
-          <button class="mood-option" type="button" data-mood="sad">难过<span>需要被轻轻接住</span></button>
-          <button class="mood-option" type="button" data-mood="tired">疲惫<span>正在缓慢恢复电量</span></button>
-          <button class="mood-option" type="button" data-mood="angry">生气<span>有边界正在被提醒</span></button>
-        </div>
-
-        <!-- Module 3: Diary Input -->
-        <form class="diary-form" id="diaryForm">
-          <label for="diaryText">今天发生了什么？</label>
-          <textarea id="diaryText" maxlength="400" placeholder="比如：今天上课有点累，但傍晚走回宿舍的时候风很舒服。"></textarea>
-          <div class="action-row">
-            <button class="primary-btn" id="generateBtn" type="submit">生成今日共鸣卡</button>
-          </div>
+          <p class="token-status" id="accessTokenStatus" role="status">口令仅保存在当前浏览器会话中。</p>
         </form>
       </section>
 
-      <section class="panel surface result-panel" id="resultPanel" aria-labelledby="resultTitle">
-        <div class="panel-title">
-          <div>
-            <h2 id="resultTitle">AI 分析</h2>
-            <p class="hint">这是根据你的记录生成的今日结果。确认后可以保存到历史日记。</p>
-          </div>
-        </div>
+      <button id="gardenButton" class="landmark-button garden-button" type="button" aria-label="打开情绪花园" title="打开情绪花园">
+        <span class="spot-hint">
+          <strong>情绪花园</strong>
+          <small>近期的心情记忆</small>
+          <span class="enter-button">进入 <span aria-hidden="true">→</span></span>
+        </span>
+      </button>
 
-        <!-- Module 4: AI Emotion Analysis -->
-        <div class="analysis-grid">
-          <article class="insight">
-            <b>情绪总结</b>
-            <p id="summaryText">你今天整体偏平静，情绪没有强烈起伏，更像是在慢慢整理自己。</p>
-          </article>
-          <article class="insight">
-            <b>可能原因</b>
-            <p id="reasonText">这种状态常常来自节奏稳定、压力暂时变轻，或你终于给了自己一点空间。</p>
-          </article>
-          <article class="insight">
-            <b>温柔建议</b>
-            <p id="adviceText">不需要急着变得更积极，先保持这种安稳的呼吸就很好。</p>
-          </article>
-          <article class="insight">
-            <b>今日关键词</b>
-            <p id="keywordsText">安稳、恢复、慢下来</p>
-          </article>
-        </div>
+      <button id="observatoryButton" class="landmark-button observatory-button" type="button" aria-label="打开历史星图" title="打开历史星图">
+        <span class="spot-hint">
+          <strong>星象台</strong>
+          <small>完整的情绪星图</small>
+          <span class="enter-button">进入 <span aria-hidden="true">→</span></span>
+        </span>
+      </button>
 
-        <!-- Module 5: Resonance Card -->
-        <article class="resonance-card" id="resonanceCard" data-mood="calm">
-          <div class="visual-stage" id="visualStage" aria-label="今日情绪意象插画">
-            <div class="mood-art-frame">
-              <div class="mood-art" id="moodArt" data-mood="calm" role="img" aria-label="AI 生成的情绪意象图"></div>
+      <div id="recentGarden" class="recent-garden" aria-label="最近保存的情绪花朵" tabindex="-1"></div>
+
+      <div class="traveler-aura" aria-hidden="true"></div>
+
+      <button id="travelerButton" class="traveler-button" type="button" aria-label="和旅人对话" title="和旅人对话">
+        <span class="traveler-sprite" aria-hidden="true"></span>
+      </button>
+
+      <span class="spot-hint diary-hint">
+        <strong>今天的日记</strong>
+        <small>记录此刻的心情</small>
+        <button id="enterJournalButton" class="enter-button" type="button">进入 <span aria-hidden="true">→</span></button>
+      </span>
+
+      <section class="companion-dialogue" aria-label="旅人对白">
+        <h2>晚上好，星球旅人</h2>
+        <p>这里会先接住你的心情，等你点点头，我们再慢慢把今天写下来。</p>
+      </section>
+
+      <div class="mood-profiles" aria-hidden="true">
+        <span data-mood="happy">开心</span>
+        <span data-mood="calm">平静</span>
+        <span data-mood="anxious">焦虑</span>
+        <span data-mood="sad">难过</span>
+        <span data-mood="tired">疲惫</span>
+        <span data-mood="angry">生气</span>
+      </div>
+    </section>
+
+    <section id="journalLayer" class="layer" role="dialog" aria-modal="true" aria-labelledby="journalTitle" aria-hidden="true" tabindex="-1">
+      <div class="journal-panel" aria-describedby="journalPrompt">
+        <button id="closeJournalButton" class="layer-close" type="button" aria-label="关闭日记层" title="关闭日记层"></button>
+        <form id="journalForm" novalidate>
+          <div class="journal-step" data-step="mood">
+            <h1 class="journal-title">此刻，最接近的心情是？</h1>
+            <p class="journal-prompt">先认出今天的感受，我们再慢慢说。</p>
+            <div class="mood-orbit" id="moodOrbit" role="group" aria-label="选择今天的心情">
+              <button type="button" class="mood-star is-selected" data-mood="calm" aria-pressed="true"><span class="mood-dot" aria-hidden="true"></span>平静</button>
+              <button type="button" class="mood-star" data-mood="happy" aria-pressed="false"><span class="mood-dot" aria-hidden="true"></span>开心</button>
+              <button type="button" class="mood-star" data-mood="anxious" aria-pressed="false"><span class="mood-dot" aria-hidden="true"></span>焦虑</button>
+              <button type="button" class="mood-star" data-mood="sad" aria-pressed="false"><span class="mood-dot" aria-hidden="true"></span>难过</button>
+              <button type="button" class="mood-star" data-mood="tired" aria-pressed="false"><span class="mood-dot" aria-hidden="true"></span>疲惫</button>
+              <button type="button" class="mood-star" data-mood="angry" aria-pressed="false"><span class="mood-dot" aria-hidden="true"></span>生气</button>
             </div>
+            <button class="journey-button" id="moodNextButton" type="button" aria-label="把这个心情写进信里" title="把这个心情写进信里"><span class="btn-text">把这个心情写进信里</span><span class="btn-icon" aria-hidden="true">→</span></button>
           </div>
-          <div class="card-copy">
-            <blockquote>
-              <p class="quote" id="quoteText">行到水穷处，坐看云起时。</p>
-              <cite class="source" id="quoteSource">王维《终南别业》</cite>
-            </blockquote>
-            <div>
-              <p class="metaphor-title" id="metaphorTitle">今日意象：趴在午后阳光里的 capybara</p>
-              <p class="ai-note" id="metaphorText">今天的平静不是空白，而是一种慢慢恢复的力量。</p>
+
+          <div class="journal-step" data-step="write">
+            <button id="moodBackButton" class="step-back" type="button"><span aria-hidden="true">←</span> 换个心情</button>
+            <h1 id="journalTitle" class="journal-title">今天有什么事情留在你心里？</h1>
+            <p class="journal-prompt" id="journalPrompt">不用写得完整，把最想留下的片段交给我。</p>
+            <textarea id="diaryText" maxlength="400" aria-describedby="characterCount journalError" placeholder="不用写得完整，只要把此刻最想留下的片段告诉我。"></textarea>
+            <div class="journal-meta">
+              <span id="journalError" role="status" aria-live="polite"></span>
+              <span id="characterCount">0 / 400</span>
             </div>
+            <button class="journey-button" id="journeyButton" type="submit" aria-label="封好这封信，寄往今日星球" title="封好这封信，寄往今日星球"><span class="btn-icon" aria-hidden="true">✦</span><span class="btn-text">封好这封信，寄往今日星球</span></button>
           </div>
-        </article>
-        <div class="result-actions">
-          <button class="primary-btn" id="saveBtn" type="button" disabled>保存日记</button>
-          <button class="secondary-btn" id="editAgainBtn" type="button">返回修改</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="resonanceScene" class="scene resonance-scene" aria-label="共鸣场景" aria-hidden="true">
+      <div class="resonance-world" id="resonanceWorld" data-mood="calm" aria-hidden="true"></div>
+      <section id="resonanceCompanion" class="resonance-companion" aria-hidden="true" hidden>
+        <span class="traveler-sprite traveler-sprite--greeting" aria-hidden="true"></span>
+        <div class="companion-dialogue">
+          <p class="dialogue-speaker">星际旅人</p>
+          <p id="companionResponse">今天的你，好像终于给自己留出了一点呼吸的地方。</p>
+          <button class="soft-button" id="revealCardButton" type="button" aria-hidden="true">看看这颗星球想告诉你什么</button>
         </div>
       </section>
+      <article
+        id="resonanceCard"
+        class="paper-panel resonance-card"
+        aria-labelledby="resonanceTitle"
+        aria-hidden="true"
+        hidden
+      >
+        <p class="paper-kicker">今日共鸣星球</p>
+        <h1 id="resonanceTitle" class="resonance-title" tabindex="-1">你的情绪，被看见了</h1>
+        <div class="analysis-grid">
+          <section>
+            <h2>情绪总结</h2>
+            <p id="summaryText"></p>
+          </section>
+          <section>
+            <h2>可能原因</h2>
+            <p id="reasonText"></p>
+          </section>
+          <section>
+            <h2>温柔建议</h2>
+            <p id="adviceText"></p>
+          </section>
+          <section>
+            <h2>今日关键词</h2>
+            <p id="keywordsText"></p>
+          </section>
+        </div>
+        <blockquote>
+          <p id="quoteText"></p>
+          <cite id="quoteSource"></cite>
+        </blockquote>
+        <div class="metaphor-copy">
+          <h2 id="metaphorTitle"></h2>
+          <p id="metaphorText"></p>
+        </div>
+        <section id="savedDiarySection" class="saved-diary" aria-labelledby="savedDiaryHeading">
+          <h2 id="savedDiaryHeading">当时写下的片段</h2>
+          <p id="savedDiaryText"></p>
+        </section>
+        <div class="card-actions">
+          <button id="saveEntryButton" class="primary-button" type="button"><span class="btn-icon" aria-hidden="true">✦</span><span class="btn-text">把这颗星球收藏起来</span></button>
+          <button id="returnHomeButton" class="secondary-button" type="button"><span class="btn-icon" aria-hidden="true">↩</span><span class="btn-text">返回主星球</span></button>
+        </div>
+      </article>
     </section>
 
-    <!-- Module 6: Diary History -->
-    <section class="panel surface" style="margin-top: 22px;" aria-labelledby="historyTitle">
-      <div class="panel-title">
-        <div>
-          <h2 id="historyTitle">历史日记</h2>
-          <p class="hint">日记将保存到云端，可在历史日记中查看。</p>
+    <section id="historyScene" class="layer" role="dialog" aria-modal="true" aria-labelledby="historyTitle" aria-hidden="true" tabindex="-1">
+      <div class="paper-panel history-panel">
+        <div class="panel-header">
+          <div>
+            <p class="paper-kicker">你的情绪宇宙</p>
+            <h1 id="historyTitle">历史星图</h1>
+          </div>
+          <button id="closeHistoryButton" class="layer-close" type="button" aria-label="关闭历史层" title="关闭历史层"></button>
         </div>
-        <button class="secondary-btn" id="clearBtn" type="button">清空历史</button>
-      </div>
-      <div class="access-token-panel">
-        <label for="accessTokenInput">日记访问口令</label>
-        <div class="access-token-row">
-          <input id="accessTokenInput" type="password" autocomplete="current-password" placeholder="输入口令后可读取和保存日记">
-          <button class="secondary-btn" id="saveAccessTokenBtn" type="button">保存口令</button>
-        </div>
-        <p class="hint" id="accessTokenStatus" role="status">口令仅保存在当前浏览器会话中。</p>
-      </div>
-      <div class="history-list" id="historyList">
-        <p class="empty-state">还没有保存的记录。</p>
+        <p class="history-panel-copy">每一颗星球，都是曾经被认真看见的一天。</p>
+        <div id="historyMap" class="history-map" aria-label="历史星图记录"></div>
+        <p id="historyEmptyState" class="history-empty-state">星图还是空的，第一颗星球正在等你。</p>
       </div>
     </section>
 
-    <!-- Module 7: Prototype Comments -->
-    <section class="prototype-comments surface" aria-labelledby="commentTitle">
-      <h2 id="commentTitle">Prototype Comments</h2>
-      <div class="comment-grid">
-        <div class="comment-card"><b>Comment 1</b>第一版重点验证写日记、情绪分析、共鸣卡生成这条核心路径。</div>
-        <div class="comment-card"><b>Comment 2</b>真实诗词提供文化质感，避免纯 AI 生成句子的生硬感。</div>
-        <div class="comment-card"><b>Comment 3</b>情绪意象使用 AI 生成图片资产，当前按心情裁切显示，增强结果页的记忆点。</div>
-        <div class="comment-card"><b>Comment 4</b>下一版可以接入真实 AI API，并为每篇日记实时生成专属图片。</div>
-      </div>
+    <section id="gardenScene" class="scene memory-scene garden-scene" aria-label="情绪花园" aria-hidden="true">
+      <div class="memory-scene-bg garden-bg" aria-hidden="true"></div>
+      <button class="memory-back" type="button" data-back-to="garden">← 返回主星球</button>
+      <header class="memory-header">
+        <p class="paper-kicker">近期的心情记忆</p>
+        <h1>情绪花园</h1>
+        <p class="memory-sub">最近七天的心情，在这里慢慢开成花。</p>
+      </header>
+      <div id="gardenField" class="memory-field garden-field" aria-label="近期心情花朵"></div>
+      <p id="gardenEmptyState" class="memory-empty" hidden>花园还空着，写下今天，第一朵花就会开。</p>
     </section>
+
+    <section id="starmapScene" class="scene memory-scene starmap-scene" aria-label="星象台" aria-hidden="true">
+      <div class="memory-scene-bg starmap-bg" aria-hidden="true">
+        <video class="starmap-video" autoplay loop muted playsinline preload="auto" poster="assets/emotion-planet/starmap-bg.png">
+          <source src="assets/emotion-planet/starmap-bg.webm" type="video/webm">
+          <source src="assets/emotion-planet/starmap-bg.mp4" type="video/mp4">
+        </video>
+      </div>
+      <button class="memory-back" type="button" data-back-to="starmap">← 返回主星球</button>
+      <header class="memory-header">
+        <p class="paper-kicker">完整的情绪星图</p>
+        <h1>星象台</h1>
+        <p class="memory-sub">每一颗星球，都是被认真看见的一天。</p>
+      </header>
+      <div id="starmapField" class="memory-field starmap-field" aria-label="历史心情星球"></div>
+      <p id="starmapEmptyState" class="memory-empty" hidden>星图还是空的，第一颗星球正在等你。</p>
+    </section>
+
+    <div id="appToast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
   </main>
 
   <script>
     const moodProfiles = {
       calm: {
         label: "平静",
+        companion: "今天的你，好像终于给自己留出了一点呼吸的地方。",
+        planetIndex: 0,
         summary: "你今天整体偏平静，情绪没有强烈起伏，更像是在慢慢整理自己。",
         reason: "这种状态常常来自节奏稳定、压力暂时变轻，或你终于给了自己一点空间。",
         advice: "不需要急着变得更积极，先保持这种安稳的呼吸就很好。",
@@ -1144,6 +2346,8 @@
       },
       happy: {
         label: "开心",
+        companion: "这颗星球今天亮了一点，因为你心里确实有光在往外冒。",
+        planetIndex: 1,
         summary: "你今天有明显的轻盈感，像是被某个小小的好消息点亮了。",
         reason: "这种愉快可能来自被回应、事情推进顺利，或你捕捉到了生活里的小确幸。",
         advice: "把这份开心留一点给明天，它会变成你继续往前走的燃料。",
@@ -1156,6 +2360,8 @@
       },
       anxious: {
         label: "焦虑",
+        companion: "我听见你的心在赶路，但它其实也想有人陪它慢一点。",
+        planetIndex: 2,
         summary: "你今天的心里可能有些绷紧，很多事情同时挤在脑海里。",
         reason: "焦虑常常不是因为你不够好，而是因为任务、期待和不确定性一起出现了。",
         advice: "先挑一件最小的事完成，焦虑会在行动里慢慢松开。",
@@ -1168,6 +2374,8 @@
       },
       sad: {
         label: "难过",
+        companion: "难过没有把你变暗，它只是让这颗星球今天更安静了一些。",
+        planetIndex: 3,
         summary: "你今天的情绪有些下沉，可能需要更多安静和被理解的空间。",
         reason: "难过有时来自失落、疲惫后的空白，或一些没有被好好说出口的委屈。",
         advice: "允许自己慢一点。情绪不是麻烦，它是在提醒你需要被照顾。",
@@ -1180,6 +2388,8 @@
       },
       tired: {
         label: "疲惫",
+        companion: "你已经走了很久，所以这颗星球先替你把灯调成了温柔的亮度。",
+        planetIndex: 4,
         summary: "你今天像是电量偏低，身体和脑子都在提醒你需要休息。",
         reason: "这种疲惫可能来自连续输出、睡眠不足，或长时间压着自己保持效率。",
         advice: "今天的任务可以收小一点，恢复本身也是一种进展。",
@@ -1192,6 +2402,8 @@
       },
       angry: {
         label: "生气",
+        companion: "这股热度不是失控，它是在认真告诉你，有些边界值得被看见。",
+        planetIndex: 5,
         summary: "你今天的情绪里有一股热度，可能是边界被碰到后自然出现的反应。",
         reason: "生气不一定是坏事，它有时是在帮你看见什么事情让你不舒服。",
         advice: "先让火降一点，再决定要不要表达。清楚地说出边界，比压下去更重要。",
@@ -1204,278 +2416,788 @@
       }
     };
 
-    const diaryForm = document.querySelector("#diaryForm");
-    const diaryText = document.querySelector("#diaryText");
-    const moodButtons = [...document.querySelectorAll(".mood-option")];
-    const saveBtn = document.querySelector("#saveBtn");
-    const editAgainBtn = document.querySelector("#editAgainBtn");
-    const clearBtn = document.querySelector("#clearBtn");
-    const accessTokenInput = document.querySelector("#accessTokenInput");
-    const saveAccessTokenBtn = document.querySelector("#saveAccessTokenBtn");
-    const accessTokenStatus = document.querySelector("#accessTokenStatus");
-    const historyList = document.querySelector("#historyList");
-    const resonanceCard = document.querySelector("#resonanceCard");
-    const moodArt = document.querySelector("#moodArt");
-    const todayLabel = document.querySelector("#todayLabel");
-    const appRoot = document.querySelector("#appRoot");
-    const resultPanel = document.querySelector("#resultPanel");
-    const inputStep = document.querySelector("#step-input");
-    const resultStep = document.querySelector("#step-result");
-    let selectedMood = "calm";
-    let latestEntry = null;
-    let isSaving = false;
-    const accessTokenStorageKey = "diaryAccessToken";
+    const stateToScene = {
+      "home-idle": "homeScene",
+      "journal-dialogue": "homeScene",
+      "journal-editing": "homeScene",
+      "resonance-intro": "resonanceScene",
+      "resonance-card": "resonanceScene",
+      "history-map": "homeScene",
+      "garden-view": "gardenScene",
+      "starmap-view": "starmapScene"
+    };
 
-    const saveStatus = document.createElement("p");
-    saveStatus.className = "hint";
-    saveStatus.setAttribute("role", "status");
-    saveBtn.parentElement.append(saveStatus);
-    clearBtn.textContent = "刷新历史";
+    const storageKey = "mood-mirror-history-v2";
+    const legacyStorageKey = "ai-emotion-diary-history";
+    const appRoot = document.querySelector("#appRoot");
+    const homeScene = document.querySelector("#homeScene");
+    const journalLayer = document.querySelector("#journalLayer");
+    const resonanceScene = document.querySelector("#resonanceScene");
+    const historyScene = document.querySelector("#historyScene");
+    const appToast = document.querySelector("#appToast");
+    const travelerButton = document.querySelector("#travelerButton");
+    const gardenButton = document.querySelector("#gardenButton");
+    const observatoryButton = document.querySelector("#observatoryButton");
+    const recentGarden = document.querySelector("#recentGarden");
+    const journalForm = document.querySelector("#journalForm");
+    const diaryText = document.querySelector("#diaryText");
+    const journalError = document.querySelector("#journalError");
+    const journeyButton = document.querySelector("#journeyButton");
+    const characterCount = document.querySelector("#characterCount");
+    const moodButtons = [...document.querySelectorAll(".mood-star")];
+    const closeJournalButton = document.querySelector("#closeJournalButton");
+    const closeHistoryButton = document.querySelector("#closeHistoryButton");
+    const historyMap = document.querySelector("#historyMap");
+    const historyEmptyState = document.querySelector("#historyEmptyState");
+    const resonanceWorld = document.querySelector("#resonanceWorld");
+    const resonanceCompanion = document.querySelector("#resonanceCompanion");
+    const companionResponse = document.querySelector("#companionResponse");
+    const revealCardButton = document.querySelector("#revealCardButton");
+    const resonanceCard = document.querySelector("#resonanceCard");
+    const resonanceTitle = document.querySelector("#resonanceTitle");
+    const summaryText = document.querySelector("#summaryText");
+    const reasonText = document.querySelector("#reasonText");
+    const adviceText = document.querySelector("#adviceText");
+    const keywordsText = document.querySelector("#keywordsText");
+    const quoteText = document.querySelector("#quoteText");
+    const quoteSource = document.querySelector("#quoteSource");
+    const metaphorTitle = document.querySelector("#metaphorTitle");
+    const metaphorText = document.querySelector("#metaphorText");
+    const savedDiaryText = document.querySelector("#savedDiaryText");
+    const saveEntryButton = document.querySelector("#saveEntryButton");
+    const returnHomeButton = document.querySelector("#returnHomeButton");
+    const gardenScene = document.querySelector("#gardenScene");
+    const starmapScene = document.querySelector("#starmapScene");
+    const starmapVideo = starmapScene.querySelector(".starmap-video");
+    const gardenField = document.querySelector("#gardenField");
+    const starmapField = document.querySelector("#starmapField");
+    const gardenEmptyState = document.querySelector("#gardenEmptyState");
+    const starmapEmptyState = document.querySelector("#starmapEmptyState");
+    const scenes = [homeScene, resonanceScene, gardenScene, starmapScene];
+    const layers = [journalLayer, historyScene];
+    const toastTimers = { hide: 0 };
+    const journalTimers = { open: 0 };
+    let appState = "home-idle";
+    let lastFocusedElement = null;
+    let selectedMood = "calm";
+    let saveReturnTimer = 0;
+    let entrySavePending = false;
+    let viewingHistoryEntry = false;
+    let latestEntry = null;
+    let historyCache = [];
+
+    const accessTokenStorageKey = "diaryAccessToken";
+    function getAccessToken() {
+      try {
+        return sessionStorage.getItem(accessTokenStorageKey) || "";
+      } catch (error) {
+        return "";
+      }
+    }
+    function setAccessToken(value) {
+      try {
+        if (value) {
+          sessionStorage.setItem(accessTokenStorageKey, value);
+        } else {
+          sessionStorage.removeItem(accessTokenStorageKey);
+        }
+      } catch (error) {
+        /* ignore */
+      }
+    }
+    function authHeaders(extra = {}) {
+      return { ...extra, authorization: `Bearer ${getAccessToken()}` };
+    }
+
+    function updateAccessTokenUi(message) {
+      const panel = document.querySelector("#accessTokenPanel");
+      const status = document.querySelector("#accessTokenStatus");
+      const label = document.querySelector("#tokenToggleLabel");
+      const connected = Boolean(getAccessToken());
+      if (panel) {
+        panel.dataset.connected = String(connected);
+      }
+      if (label) {
+        label.textContent = connected ? "已连接" : "访问口令";
+      }
+      if (status && typeof message === "string") {
+        status.textContent = message;
+      }
+    }
+
+    function initAccessTokenPanel() {
+      const toggle = document.querySelector("#tokenToggle");
+      const form = document.querySelector("#tokenForm");
+      const input = document.querySelector("#accessTokenInput");
+      if (!toggle || !form || !input) {
+        return;
+      }
+
+      if (getAccessToken()) {
+        input.value = getAccessToken();
+      }
+      updateAccessTokenUi();
+
+      toggle.addEventListener("click", () => {
+        const open = form.hasAttribute("hidden");
+        if (open) {
+          form.removeAttribute("hidden");
+          input.focus();
+        } else {
+          form.setAttribute("hidden", "");
+        }
+        toggle.setAttribute("aria-expanded", String(open));
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const value = input.value.trim();
+        if (!value) {
+          updateAccessTokenUi("请先输入日记访问口令。");
+          return;
+        }
+        setAccessToken(value);
+        updateAccessTokenUi("正在连接……");
+        loadHistory();
+      });
+    }
+
+    function setJournalControlsDisabled(disabled) {
+      closeJournalButton.disabled = disabled;
+      journeyButton.disabled = disabled;
+      diaryText.disabled = disabled;
+
+      for (const button of moodButtons) {
+        button.disabled = disabled;
+      }
+
+      journalLayer.setAttribute("aria-busy", String(disabled));
+    }
 
     function formatDate(date) {
-      return `${date.getMonth() + 1} 月 ${date.getDate()} 日`;
+      return new Intl.DateTimeFormat("zh-CN", {
+        month: "long",
+        day: "numeric"
+      }).format(date);
     }
 
-    function updateToday() {
-      todayLabel.textContent = formatDate(new Date());
+    function setSelectedMood(nextMood) {
+      selectedMood = nextMood in moodProfiles ? nextMood : "calm";
+
+      for (const item of moodButtons) {
+        const isSelected = item.dataset.mood === selectedMood;
+        item.classList.toggle("is-selected", isSelected);
+        item.setAttribute("aria-pressed", String(isSelected));
+      }
     }
 
-    function renderVisual(mood) {
-      moodArt.dataset.mood = mood;
+    function parseHistoryValue(rawValue) {
+      if (rawValue === null) {
+        return { valid: false, value: [] };
+      }
+
+      try {
+        const parsed = JSON.parse(rawValue);
+        if (Array.isArray(parsed)) {
+          return { valid: true, value: parsed };
+        }
+
+        return { valid: false, value: [] };
+      } catch (error) {
+        return { valid: false, value: [] };
+      }
     }
 
-    function setResultReady(isReady) {
-      appRoot.classList.toggle("is-result-ready", isReady);
-      inputStep.classList.toggle("is-done", isReady);
-      inputStep.classList.toggle("is-active", !isReady);
-      resultStep.classList.toggle("is-active", isReady);
+    function migrateHistory(items) {
+      if (!Array.isArray(items)) {
+        return [];
+      }
+
+      return items.slice(0, 60).map((item, index) => {
+        const mood = typeof item?.mood === "string" && item.mood in moodProfiles
+          ? item.mood
+          : "calm";
+        const profile = moodProfiles[mood];
+        const fallbackDate = new Date(Date.now() - index * 1000);
+        const rawCreatedAt = typeof item?.createdAt === "string" ? item.createdAt : "";
+        const createdAtDate = rawCreatedAt ? new Date(rawCreatedAt) : fallbackDate;
+        const createdAt = Number.isNaN(createdAtDate.getTime())
+          ? fallbackDate.toISOString()
+          : createdAtDate.toISOString();
+
+        return {
+          id: typeof item?.id === "string" && item.id ? item.id : `legacy-${index}-${mood}`,
+          createdAt,
+          date: typeof item?.date === "string" && item.date ? item.date : formatDate(new Date(createdAt)),
+          mood,
+          moodLabel: typeof item?.moodLabel === "string" ? item.moodLabel : profile.label,
+          diary: typeof item?.diary === "string" ? item.diary : "",
+          companion: typeof item?.companion === "string" ? item.companion : profile.companion,
+          summary: typeof item?.summary === "string" ? item.summary : profile.summary,
+          reason: typeof item?.reason === "string" ? item.reason : profile.reason,
+          advice: typeof item?.advice === "string" ? item.advice : profile.advice,
+          keywords: typeof item?.keywords === "string" ? item.keywords : profile.keywords,
+          quote: typeof item?.quote === "string" ? item.quote : profile.quote,
+          source: typeof item?.source === "string" ? item.source : profile.source,
+          metaphorTitle: typeof item?.metaphorTitle === "string" ? item.metaphorTitle : profile.metaphorTitle,
+          metaphorText: typeof item?.metaphorText === "string" ? item.metaphorText : profile.metaphorText,
+          planetIndex: Number.isInteger(item?.planetIndex) ? item.planetIndex : profile.planetIndex
+        };
+      });
     }
 
-    function applyProfile(mood) {
-      const profile = moodProfiles[mood];
-      document.querySelector("#summaryText").textContent = profile.summary;
-      document.querySelector("#reasonText").textContent = profile.reason;
-      document.querySelector("#adviceText").textContent = profile.advice;
-      document.querySelector("#keywordsText").textContent = profile.keywords;
-      document.querySelector("#quoteText").textContent = profile.quote;
-      document.querySelector("#quoteSource").textContent = profile.source;
-      document.querySelector("#metaphorTitle").textContent = profile.metaphorTitle;
-      document.querySelector("#metaphorText").textContent = profile.metaphorText;
-      resonanceCard.dataset.mood = mood;
-      renderVisual(mood);
-      latestEntry = {
-        date: formatDate(new Date()),
-        mood,
-        moodLabel: profile.label,
-        diary: diaryText.value.trim() || "今天没有写下具体事件，但我记录了自己的情绪。",
-        note: profile.advice,
-        quote: profile.quote,
-        source: profile.source,
-        metaphorTitle: profile.metaphorTitle
+    // History now lives in the Cloudflare D1 store behind the Worker API.
+    // readHistory() stays synchronous by returning an in-memory cache that
+    // loadHistory() keeps in sync.
+    function readHistory() {
+      return historyCache;
+    }
+
+    function mapApiEntry(row) {
+      return {
+        id: row.id,
+        mood: row.mood,
+        diary: typeof row.content === "string" ? row.content : "",
+        createdAt: typeof row.createdAt === "string" ? row.createdAt : ""
       };
-      if (!isSaving) {
-        saveBtn.textContent = "保存日记";
-        saveStatus.textContent = "";
-      }
-      saveBtn.disabled = isSaving;
-      setResultReady(true);
-      resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-
-    function getAccessToken() {
-      const storedToken = sessionStorage.getItem("diaryAccessToken");
-      if (storedToken) {
-        return storedToken;
-      }
-
-      const trimmedToken = accessTokenInput.value.trim();
-      if (trimmedToken) {
-        sessionStorage.setItem("diaryAccessToken", trimmedToken);
-        accessTokenStatus.textContent = "口令已保存到当前浏览器会话。";
-        return trimmedToken;
-      }
-      throw new Error("请先输入日记访问口令。");
-    }
-
-    function handleUnauthorized() {
-      sessionStorage.removeItem("diaryAccessToken");
-      accessTokenInput.value = "";
-      accessTokenStatus.textContent = "访问口令不正确，请重新输入。";
-      throw new Error("访问口令不正确，请重新输入。");
     }
 
     async function loadHistory() {
-      const response = await fetch("/api/entries", {
-        headers: {
-          accept: "application/json",
-          authorization: `Bearer ${getAccessToken()}`
-        }
-      });
-      if (response.status === 401) {
-        handleUnauthorized();
-      }
-      if (!response.ok) {
-        throw new Error("读取历史失败");
-      }
-      return response.json();
-    }
-
-    async function saveEntry(entry) {
-      const response = await fetch("/api/entries", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${getAccessToken()}`
-        },
-        body: JSON.stringify({
-          content: entry.diary,
-          mood: entry.mood,
-          intensity: 3,
-          aiResponse: entry.note
-        })
-      });
-      if (response.status === 401) {
-        handleUnauthorized();
-      }
-      if (!response.ok) {
-        throw new Error("保存失败");
-      }
-      return response.json();
-    }
-
-    function setHistoryMessage(message) {
-      historyList.replaceChildren();
-      const state = document.createElement("p");
-      state.className = "empty-state";
-      state.textContent = message;
-      historyList.append(state);
-    }
-
-    function renderHistory(items) {
-      if (!items.length) {
-        setHistoryMessage("还没有保存的记录。");
+      if (!getAccessToken()) {
+        historyCache = [];
+        renderGarden();
+        renderHistoryMap();
         return;
       }
-      const fragment = document.createDocumentFragment();
-      items.forEach((item) => {
-        const profile = moodProfiles[item.mood];
-        const article = document.createElement("article");
-        const heading = document.createElement("strong");
-        const content = document.createElement("p");
-        const createdAt = new Date(item.createdAt);
-
-        article.className = "history-item";
-        heading.textContent = `${formatDate(createdAt)} · ${profile ? profile.label : item.mood}`;
-        content.textContent = item.content;
-        article.append(heading, content);
-        fragment.append(article);
-      });
-      historyList.replaceChildren(fragment);
+      try {
+        const response = await fetch("/api/entries", { headers: authHeaders() });
+        if (response.status === 401) {
+          setAccessToken("");
+          historyCache = [];
+          updateAccessTokenUi("访问口令不正确，请重新输入。");
+          renderGarden();
+          renderHistoryMap();
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const rows = await response.json();
+        historyCache = migrateHistory(Array.isArray(rows) ? rows.map(mapApiEntry) : []);
+        updateAccessTokenUi("已连接到你的情绪宇宙。");
+      } catch (error) {
+        showToast("暂时无法读取你的星球，请稍后再试。");
+      }
+      renderGarden();
+      renderHistoryMap();
     }
 
-    async function refreshHistory() {
-      clearBtn.disabled = true;
-      try {
-        renderHistory(await loadHistory());
-        return true;
-      } catch (error) {
-        if (error instanceof Error && (
-          error.message === "访问口令不正确，请重新输入。" ||
-          error.message === "请先输入日记访问口令。"
-        )) {
-          setHistoryMessage(error.message);
+    function setAppState(nextState) {
+      if (!stateToScene[nextState]) {
+        return;
+      }
+
+      appState = nextState;
+      appRoot.dataset.appState = nextState;
+
+      const activeSceneId = stateToScene[nextState];
+      for (const scene of scenes) {
+        const isActive = scene.id === activeSceneId;
+        scene.classList.toggle("is-active", isActive);
+        scene.setAttribute("aria-hidden", String(!isActive));
+      }
+
+      const resonanceActive = nextState === "resonance-intro" || nextState === "resonance-card";
+      const companionVisible = nextState === "resonance-intro";
+      const cardVisible = nextState === "resonance-card";
+      resonanceCompanion.hidden = !companionVisible;
+      resonanceCard.hidden = !cardVisible;
+      resonanceCompanion.setAttribute("aria-hidden", String(!companionVisible));
+      resonanceCard.setAttribute("aria-hidden", String(!cardVisible));
+      revealCardButton.disabled = !companionVisible;
+      revealCardButton.setAttribute("aria-hidden", String(!companionVisible));
+      saveEntryButton.disabled = !cardVisible;
+      returnHomeButton.disabled = !cardVisible;
+      resonanceScene.dataset.resonanceActive = String(resonanceActive);
+
+      const journalOpen = nextState === "journal-dialogue" || nextState === "journal-editing";
+      const historyOpen = nextState === "history-map";
+      const activeLayer = journalOpen ? journalLayer : (historyOpen ? historyScene : null);
+      const shouldInertHomeScene = activeLayer && activeSceneId === "homeScene";
+
+      for (const layer of layers) {
+        layer.classList.remove("is-open");
+        layer.setAttribute("aria-hidden", "true");
+      }
+
+      if (activeLayer) {
+        appRoot.dataset.gardenOpen = "false";
+        if (shouldInertHomeScene && !homeScene.hasAttribute("inert") && document.activeElement instanceof HTMLElement) {
+          lastFocusedElement = document.activeElement;
+        }
+
+        activeLayer.classList.add("is-open");
+        activeLayer.setAttribute("aria-hidden", "false");
+        activeLayer.setAttribute("tabindex", "-1");
+
+        if (shouldInertHomeScene) {
+          homeScene.setAttribute("inert", "");
+          if ("inert" in homeScene) {
+            homeScene.inert = true;
+          }
         } else {
-          setHistoryMessage("历史读取失败，请稍后重试。");
+          homeScene.removeAttribute("inert");
+          if ("inert" in homeScene) {
+            homeScene.inert = false;
+          }
         }
-        console.error(error);
-        return false;
-      } finally {
-        clearBtn.disabled = false;
+
+        const focusTarget = activeLayer === journalLayer
+          ? getJournalFocusTarget(nextState)
+          : (activeLayer.querySelector("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])") || activeLayer);
+        focusTarget.focus();
+        return;
+      }
+
+      homeScene.removeAttribute("inert");
+      if ("inert" in homeScene) {
+        homeScene.inert = false;
       }
     }
 
-    moodButtons.forEach((button) => {
+    function closeActiveLayer() {
+      if (appState === "journal-dialogue" || appState === "journal-editing" || appState === "history-map") {
+        window.clearTimeout(journalTimers.open);
+        resetMotionState();
+        if (appState === "journal-dialogue" || appState === "journal-editing") {
+          setJournalControlsDisabled(false);
+          journalError.textContent = "";
+          diaryText.setAttribute("aria-invalid", "false");
+        }
+        setAppState("home-idle");
+        if (lastFocusedElement instanceof HTMLElement) {
+          lastFocusedElement.focus();
+        }
+      }
+    }
+
+    function showToast(message) {
+      appToast.textContent = message;
+      appToast.classList.add("is-visible");
+      window.clearTimeout(toastTimers.hide);
+      toastTimers.hide = window.setTimeout(() => {
+        appToast.classList.remove("is-visible");
+      }, 1400);
+    }
+
+    function setGardenOpen(open) {
+      appRoot.dataset.gardenOpen = open ? "true" : "false";
+    }
+
+    function showGardenSummary() {
+      if (appRoot.dataset.gardenOpen === "true") {
+        setGardenOpen(false);
+        return;
+      }
+
+      const entries = readHistory();
+      renderGarden(entries);
+
+      if (!entries.length) {
+        showToast("第一朵花正在等你。");
+        return;
+      }
+
+      setGardenOpen(true);
+      recentGarden.focus();
+      showToast("最近的心情正在花园里发光。");
+    }
+
+    function setTravelerMotion(nextMotion) {
+      appRoot.dataset.travelerMotion = nextMotion;
+    }
+
+    function resetMotionState() {
+      setTravelerMotion("idle");
+    }
+
+    function setJournalStep(step) {
+      appRoot.dataset.journalStep = step === "write" ? "write" : "mood";
+    }
+
+    function getJournalFocusTarget(nextState) {
+      if (nextState === "journal-editing" && appRoot.dataset.journalStep === "write") {
+        return diaryText;
+      }
+
+      const selectedMoodButton = moodButtons.find((item) => item.classList.contains("is-selected"));
+      return selectedMoodButton || moodButtons[0] || journalLayer;
+    }
+
+    function openJournal() {
+      setJournalControlsDisabled(false);
+      setJournalStep("mood");
+      setAppState("journal-dialogue");
+      window.clearTimeout(journalTimers.open);
+      journalTimers.open = window.setTimeout(() => {
+        if (appState === "journal-dialogue") {
+          setAppState("journal-editing");
+        }
+      }, 300);
+    }
+
+    function validateJournal() {
+      if (diaryText.value.trim().length < 2) {
+        journalError.textContent = "请先写下一点今天的心情。";
+        diaryText.setAttribute("aria-invalid", "true");
+        diaryText.focus();
+        return false;
+      }
+
+      journalError.textContent = "";
+      diaryText.setAttribute("aria-invalid", "false");
+      return true;
+    }
+
+    function buildEntry(mood = selectedMood, diary = diaryText.value.trim()) {
+      const createdAt = new Date();
+      const profile = moodProfiles[mood] || moodProfiles.calm;
+
+      return {
+        id: `${createdAt.getTime()}-${mood}`,
+        createdAt: createdAt.toISOString(),
+        date: formatDate(createdAt),
+        mood,
+        moodLabel: profile.label,
+        diary,
+        companion: profile.companion,
+        summary: profile.summary,
+        reason: profile.reason,
+        advice: profile.advice,
+        keywords: profile.keywords,
+        quote: profile.quote,
+        source: profile.source,
+        metaphorTitle: profile.metaphorTitle,
+        metaphorText: profile.metaphorText,
+        planetIndex: profile.planetIndex
+      };
+    }
+
+    function renderGarden(entries = readHistory()) {
+      const recentEntries = entries.slice(0, 6);
+      recentGarden.replaceChildren();
+
+      for (const entry of recentEntries) {
+        const flower = document.createElement("button");
+        flower.type = "button";
+        flower.className = "history-flower";
+        flower.dataset.mood = entry.mood;
+        flower.setAttribute("aria-label", `${entry.date}，${entry.moodLabel}`);
+        flower.title = `${entry.date}，${entry.moodLabel}`;
+        flower.addEventListener("click", () => openHistoryEntry(entry.id));
+        recentGarden.append(flower);
+      }
+    }
+
+    function renderHistoryMap(entries = readHistory()) {
+      historyMap.replaceChildren();
+      historyEmptyState.hidden = entries.length > 0;
+
+      for (const [index, entry] of entries.entries()) {
+        const planet = document.createElement("button");
+        const label = `${entry.date} · ${entry.moodLabel}`;
+        planet.type = "button";
+        planet.className = "history-planet";
+        planet.dataset.mood = entry.mood;
+        planet.style.setProperty("--orbit-index", String(index));
+        planet.textContent = label;
+        planet.setAttribute("aria-label", label);
+        planet.title = label;
+        planet.addEventListener("click", () => openHistoryEntry(entry.id));
+        historyMap.append(planet);
+      }
+    }
+
+    function renderGardenField(entries = readHistory()) {
+      const recentEntries = entries.slice(0, 7);
+      gardenField.replaceChildren();
+      gardenEmptyState.hidden = recentEntries.length > 0;
+
+      for (const entry of recentEntries) {
+        const flower = document.createElement("button");
+        const label = `${entry.date} · ${entry.moodLabel}`;
+        flower.type = "button";
+        flower.className = "history-flower";
+        flower.dataset.mood = entry.mood;
+        flower.setAttribute("aria-label", label);
+        flower.title = label;
+        flower.addEventListener("click", () => openHistoryEntry(entry.id));
+        gardenField.append(flower);
+      }
+    }
+
+    function renderStarmapField(entries = readHistory()) {
+      starmapField.replaceChildren();
+      starmapEmptyState.hidden = entries.length > 0;
+
+      for (const [index, entry] of entries.entries()) {
+        const planet = document.createElement("button");
+        const label = `${entry.date} · ${entry.moodLabel}`;
+        planet.type = "button";
+        planet.className = "history-planet";
+        planet.dataset.mood = entry.mood;
+        planet.style.setProperty("--orbit-index", String(index));
+        planet.textContent = label;
+        planet.setAttribute("aria-label", label);
+        planet.title = label;
+        planet.addEventListener("click", () => openHistoryEntry(entry.id));
+        starmapField.append(planet);
+      }
+    }
+
+    function renderEntry(entry) {
+      companionResponse.textContent = entry.companion;
+      summaryText.textContent = entry.summary;
+      reasonText.textContent = entry.reason;
+      adviceText.textContent = entry.advice;
+      keywordsText.textContent = entry.keywords;
+      quoteText.textContent = entry.quote;
+      quoteSource.textContent = entry.source;
+      metaphorTitle.textContent = entry.metaphorTitle;
+      metaphorText.textContent = entry.metaphorText;
+      savedDiaryText.textContent = entry.diary;
+      resonanceWorld.dataset.mood = entry.mood;
+      resonanceWorld.style.setProperty(
+        "--planet-index",
+        entry.planetIndex
+      );
+    }
+
+    function openHistoryEntry(entryId) {
+      const entry = readHistory().find((item) => item.id === entryId);
+      if (!entry) {
+        return;
+      }
+
+      latestEntry = entry;
+      entrySavePending = false;
+      viewingHistoryEntry = true;
+      renderEntry(entry);
+      saveEntryButton.hidden = true;
+      setAppState("resonance-card");
+      (resonanceTitle || resonanceCard).focus();
+    }
+
+    function revealResonanceCard() {
+      if (!latestEntry) {
+        return;
+      }
+
+      setAppState("resonance-card");
+      (resonanceTitle || resonanceCard).focus();
+    }
+
+    async function saveLatestEntry() {
+      if (!latestEntry || saveEntryButton.disabled) {
+        return;
+      }
+
+      if (!getAccessToken()) {
+        showToast("请先在右上角输入访问口令，再收藏星球。");
+        updateAccessTokenUi("请先输入日记访问口令。");
+        return;
+      }
+
+      entrySavePending = true;
+      saveEntryButton.disabled = true;
+
+      try {
+        const response = await fetch("/api/entries", {
+          method: "POST",
+          headers: authHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({
+            content: latestEntry.diary,
+            mood: latestEntry.mood,
+            intensity: 3,
+            aiResponse: latestEntry.companion || null
+          })
+        });
+
+        if (response.status === 401) {
+          setAccessToken("");
+          updateAccessTokenUi("访问口令不正确，请重新输入。");
+          throw new Error("unauthorized");
+        }
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const saved = await response.json();
+        const entry = migrateHistory([mapApiEntry(saved)])[0];
+        historyCache = [entry, ...historyCache.filter((item) => item.id !== entry.id)];
+        latestEntry = entry;
+      } catch (error) {
+        entrySavePending = false;
+        saveEntryButton.disabled = false;
+        showToast("暂时无法保存这颗星球，请保留页面后再试一次。");
+        return;
+      }
+
+      renderGarden();
+      renderHistoryMap();
+      showToast("这颗星球已经收藏进你的宇宙。");
+      window.clearTimeout(saveReturnTimer);
+      saveReturnTimer = window.setTimeout(() => {
+        saveReturnTimer = 0;
+        returnHome({ resetJournal: true });
+      }, 900);
+    }
+
+    function returnHome({ resetJournal = false } = {}) {
+      window.clearTimeout(saveReturnTimer);
+      saveReturnTimer = 0;
+      resetMotionState();
+      setJournalControlsDisabled(false);
+
+      if (viewingHistoryEntry) {
+        latestEntry = null;
+        viewingHistoryEntry = false;
+        saveEntryButton.hidden = false;
+        resetJournal = false;
+      }
+
+      if (resetJournal) {
+        journalForm.reset();
+        diaryText.value = "";
+        characterCount.textContent = "0 / 400";
+        journalError.textContent = "";
+        diaryText.setAttribute("aria-invalid", "false");
+        latestEntry = null;
+        entrySavePending = false;
+        setSelectedMood("calm");
+        selectedMood = "calm";
+      }
+
+      setAppState("home-idle");
+      renderGarden();
+      (travelerButton || gardenButton).focus();
+    }
+
+    function beginJourney(event) {
+      event.preventDefault();
+
+      if (appState === "resonance-intro" || appState === "resonance-card") {
+        return;
+      }
+
+      if (!validateJournal()) {
+        return;
+      }
+
+      entrySavePending = false;
+      latestEntry = buildEntry(selectedMood, diaryText.value.trim());
+      viewingHistoryEntry = false;
+      saveEntryButton.hidden = false;
+      setJournalControlsDisabled(false);
+      renderEntry(latestEntry);
+      setAppState("resonance-intro");
+      revealCardButton.focus();
+    }
+
+    travelerButton.addEventListener("click", openJournal);
+    document.querySelector("#enterJournalButton").addEventListener("click", openJournal);
+
+    function openMemoryScene(kind) {
+      lastFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      if (kind === "garden") {
+        renderGardenField();
+        setAppState("garden-view");
+      } else {
+        renderStarmapField();
+        setAppState("starmap-view");
+        if (starmapVideo) {
+          const playback = starmapVideo.play();
+          if (playback && typeof playback.catch === "function") {
+            playback.catch(() => {});
+          }
+        }
+      }
+      const backButton = (kind === "garden" ? gardenScene : starmapScene).querySelector(".memory-back");
+      if (backButton) {
+        backButton.focus();
+      }
+    }
+
+    function closeMemoryScene() {
+      if (starmapVideo) {
+        starmapVideo.pause();
+      }
+      setAppState("home-idle");
+      if (lastFocusedElement instanceof HTMLElement) {
+        lastFocusedElement.focus();
+      }
+    }
+
+    gardenButton.addEventListener("click", () => openMemoryScene("garden"));
+    observatoryButton.addEventListener("click", () => openMemoryScene("starmap"));
+
+    for (const backButton of document.querySelectorAll(".memory-back[data-back-to]")) {
+      backButton.addEventListener("click", closeMemoryScene);
+    }
+
+    closeJournalButton.addEventListener("click", () => {
+      window.clearTimeout(journalTimers.open);
+      closeActiveLayer();
+    });
+    closeHistoryButton.addEventListener("click", closeActiveLayer);
+
+    journalForm.addEventListener("submit", beginJourney);
+    revealCardButton.addEventListener("click", revealResonanceCard);
+    saveEntryButton.addEventListener("click", saveLatestEntry);
+    returnHomeButton.addEventListener("click", () => returnHome({ resetJournal: entrySavePending }));
+
+    diaryText.addEventListener("input", () => {
+      characterCount.textContent = `${diaryText.value.length} / 400`;
+      if (journalError.textContent && diaryText.value.trim().length >= 2) {
+        journalError.textContent = "";
+        diaryText.setAttribute("aria-invalid", "false");
+      }
+    });
+
+    for (const button of moodButtons) {
       button.addEventListener("click", () => {
-        selectedMood = button.dataset.mood;
-        moodButtons.forEach((item) => item.classList.toggle("is-selected", item === button));
+        setSelectedMood(button.dataset.mood || "calm");
+      });
+    }
+    setSelectedMood(selectedMood);
+
+    document.querySelector("#moodNextButton").addEventListener("click", () => {
+      setJournalStep("write");
+      window.requestAnimationFrame(() => diaryText.focus());
+    });
+
+    document.querySelector("#moodBackButton").addEventListener("click", () => {
+      setJournalStep("mood");
+      window.requestAnimationFrame(() => {
+        const current = moodButtons.find((item) => item.classList.contains("is-selected"));
+        (current || moodButtons[0]).focus();
       });
     });
 
-    diaryForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      applyProfile(selectedMood);
-    });
-
-    saveBtn.addEventListener("click", async () => {
-      if (!latestEntry || isSaving) {
-        return;
-      }
-      const entryToSave = latestEntry;
-      let saveSucceeded = false;
-      isSaving = true;
-      saveBtn.disabled = true;
-      saveBtn.textContent = "保存中...";
-      saveStatus.textContent = "";
-      try {
-        await saveEntry(entryToSave);
-        saveSucceeded = true;
-        if (latestEntry === entryToSave) {
-          saveBtn.textContent = "已保存";
-          saveStatus.textContent = "日记保存成功。";
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        appRoot.dataset.gardenOpen = "false";
+        if (appState === "garden-view" || appState === "starmap-view") {
+          closeMemoryScene();
+          return;
         }
-        const historyRefreshed = await refreshHistory();
-        if (!historyRefreshed && latestEntry === entryToSave) {
-          saveStatus.textContent = "日记已保存，但历史列表刷新失败，请点击刷新历史。";
-        }
-      } catch (error) {
-        if (latestEntry === entryToSave) {
-          saveBtn.textContent = "保存日记";
-          saveStatus.textContent = error instanceof Error && (
-            error.message === "访问口令不正确，请重新输入。" ||
-            error.message === "请先输入日记访问口令。"
-          )
-            ? error.message
-            : "保存失败，请稍后重试。";
-        }
-        console.error(error);
-      } finally {
-        isSaving = false;
-        const hasNewerEntry = latestEntry !== entryToSave;
-        saveBtn.disabled = saveSucceeded && !hasNewerEntry;
-        if (hasNewerEntry) {
-          saveBtn.textContent = "保存日记";
-          saveStatus.textContent = "";
-        }
+        closeActiveLayer();
       }
     });
 
-    editAgainBtn.addEventListener("click", () => {
-      setResultReady(false);
-      document.querySelector("#inputTitle").scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-
-    clearBtn.addEventListener("click", refreshHistory);
-    saveAccessTokenBtn.addEventListener("click", () => {
-      const trimmedToken = accessTokenInput.value.trim();
-      if (!trimmedToken) {
-        accessTokenStatus.textContent = "请先输入日记访问口令。";
-        return;
-      }
-      sessionStorage.setItem("diaryAccessToken", trimmedToken);
-      accessTokenStatus.textContent = "口令已保存到当前浏览器会话。";
-      refreshHistory();
-    });
-
-    const storedAccessToken = sessionStorage.getItem("diaryAccessToken");
-    if (storedAccessToken) {
-      accessTokenInput.value = storedAccessToken;
-      accessTokenStatus.textContent = "已读取当前浏览器会话中的口令。";
-    }
-
-    updateToday();
-    renderVisual(selectedMood);
-    setResultReady(false);
-    refreshHistory();
+    setAppState("home-idle");
+    initAccessTokenPanel();
+    loadHistory();
   </script>
 </body>
 </html>
