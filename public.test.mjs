@@ -114,8 +114,33 @@ assert.match(
 );
 assert.match(
   html,
-  /window\.setTimeout\(\(\) => \{[\s\S]*appRoot\.dataset\.hintsReady = "true";[\s\S]*\},\s*2200\);/,
-  "Home hints should switch to the animated state after a short delay.",
+  /window\.setTimeout\(\(\) => \{[\s\S]*appRoot\.dataset\.hintsReady = "true";[\s\S]*\},\s*1000\);/,
+  "Home hints should switch to the animated state after one second.",
+);
+assert.match(
+  html,
+  /animation:\s*hint-breathe var\(--hint-duration,\s*7\.4s\) ease-in-out var\(--hint-delay,\s*0s\) infinite both;/,
+  "Home hints should use fill-mode both so the handoff into animation is gradual.",
+);
+assert.match(
+  html,
+  /\.garden-button \.spot-hint\s*\{[\s\S]*?--hint-duration:\s*7\.2s;[\s\S]*?--hint-delay:\s*0s;[\s\S]*?\}/,
+  "Garden hint should have its own breathing timing.",
+);
+assert.match(
+  html,
+  /\.observatory-button \.spot-hint\s*\{[\s\S]*?--hint-duration:\s*8\.1s;[\s\S]*?--hint-delay:\s*0\.9s;[\s\S]*?\}/,
+  "Observatory hint should be offset from the garden hint.",
+);
+assert.match(
+  html,
+  /\.diary-hint\s*\{[\s\S]*?--hint-duration:\s*7\.7s;[\s\S]*?--hint-delay:\s*1\.8s;[\s\S]*?\}/,
+  "Diary hint should be offset from the other two hints.",
+);
+assert.match(
+  html,
+  /@keyframes hint-breathe\s*\{[\s\S]*?0%[\s\S]*?opacity:\s*0\.9;[\s\S]*?35%[\s\S]*?opacity:\s*0\.76;[\s\S]*?68%[\s\S]*?opacity:\s*0\.12;[\s\S]*?100%[\s\S]*?opacity:\s*0\.9;[\s\S]*?\}/,
+  "Hint breathing should fade gradually through intermediate keyframes.",
 );
 
 assert.match(

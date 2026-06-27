@@ -368,7 +368,7 @@
       transform: translateX(-50%);
       opacity: 0;
       transition: opacity 350ms ease;
-      animation: hint-breathe 6.5s ease-in-out infinite;
+      animation: hint-breathe var(--hint-duration, 7.4s) ease-in-out var(--hint-delay, 0s) infinite both;
     }
 
     #appRoot[data-hints-ready="false"] .spot-hint {
@@ -448,11 +448,13 @@
     }
 
     .garden-button .spot-hint {
-      animation-delay: 0s;
+      --hint-duration: 7.2s;
+      --hint-delay: 0s;
     }
 
     .observatory-button .spot-hint {
-      animation-delay: 2.2s;
+      --hint-duration: 8.1s;
+      --hint-delay: 0.9s;
     }
 
     /* Diary hint floats over the open book on the table (the writing entry). */
@@ -462,7 +464,8 @@
       top: clamp(70px, 18%, 200px);
       bottom: auto;
       z-index: 2;
-      animation-delay: 4.4s;
+      --hint-duration: 7.7s;
+      --hint-delay: 1.8s;
     }
 
     .traveler-button {
@@ -1681,13 +1684,20 @@
     }
 
     @keyframes hint-breathe {
-      0%,
-      100% {
-        opacity: 0.82;
+      0% {
+        opacity: 0.9;
       }
 
-      50% {
+      35% {
+        opacity: 0.76;
+      }
+
+      68% {
         opacity: 0.12;
+      }
+
+      100% {
+        opacity: 0.9;
       }
     }
 
@@ -3202,7 +3212,7 @@
 
     window.setTimeout(() => {
       appRoot.dataset.hintsReady = "true";
-    }, 2200);
+    }, 1000);
 
     setAppState("home-idle");
     initAccessTokenPanel();
