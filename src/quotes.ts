@@ -219,17 +219,108 @@ export const quoteLibrary: QuoteCandidate[] = [
     moods: ["tired", "sad", "anxious"],
     tags: ["希望", "休息", "明天", "继续"],
   },
+  {
+    text: "若每个人都坚持让自己的声音钻出身体，都以不亢不卑的行为和姿态，在天空中传播一种自由气息，这样生活就有望了。",
+    source: "王开岭《精神明亮的人》",
+    type: "book",
+    moods: ["angry", "anxious"],
+    tags: ["声音", "自由", "表达", "尊严"],
+  },
+  {
+    text: "说谎和沉默是现在人类社会日渐蔓延的两大罪恶。实际上，我们经常说谎，动不动就沉默。",
+    source: "村上春树",
+    type: "quote",
+    moods: ["angry", "sad", "anxious"],
+    tags: ["沉默", "真实", "表达", "清醒"],
+  },
+  {
+    text: "死亡不是失去生命，而是走出了时间。",
+    source: "余华《在细雨中呼喊》",
+    type: "book",
+    moods: ["sad", "calm"],
+    tags: ["生命", "时间", "告别", "无常"],
+  },
+  {
+    text: "你的眼睛真好看，里面有晴雨，日月，山川，江河，云雾，花鸟，但我的眼睛更好看，因为我的眼里有你。",
+    source: "余光中",
+    type: "quote",
+    moods: ["happy", "calm"],
+    tags: ["喜欢", "温柔", "关系", "明亮"],
+  },
+  {
+    text: "我生性自由散漫，不喜欢拘束。我谁也不爱，谁也不恨。我没有欺骗这个，追求那个；没有把这个取笑，那个玩弄。我有自己的消遣。",
+    source: "塞万提斯《堂吉诃德》",
+    type: "book",
+    moods: ["calm", "angry"],
+    tags: ["自由", "独处", "不拘束", "自我"],
+  },
+  {
+    text: "两袖一挥，清风明月，仰天一笑，快意人生，步履一双，山河踏遍，心有明月，山河明媚。",
+    source: "林清玄",
+    type: "quote",
+    moods: ["happy", "calm"],
+    tags: ["快意", "自由", "山河", "明月"],
+  },
+  {
+    text: "执着于理想，纯粹于当下。",
+    source: "北岛《北岛作品精选》",
+    type: "book",
+    moods: ["calm", "anxious"],
+    tags: ["理想", "当下", "纯粹", "坚持"],
+  },
+  {
+    text: "太阳强烈，水波温柔。",
+    source: "海子《活在这珍贵的人间》",
+    type: "poem",
+    moods: ["happy", "calm"],
+    tags: ["太阳", "温柔", "明亮", "当下"],
+  },
+  {
+    text: "外界的声音都是参考，你不开心就不要参考。",
+    source: "未知",
+    type: "quote",
+    moods: ["angry", "sad", "anxious"],
+    tags: ["边界", "声音", "不讨好", "自我"],
+  },
+  {
+    text: "醒时只愿朝花笑，醉时只愿对花眠。从今不问人间事，只作人间不老仙。",
+    source: "未知",
+    type: "poem",
+    moods: ["calm", "tired"],
+    tags: ["花", "休息", "远离纷扰", "安静"],
+  },
+  {
+    text: "追风赶月莫停留，平芜尽处是春山。",
+    source: "田歆《我不》",
+    type: "book",
+    moods: ["happy", "anxious", "tired"],
+    tags: ["春山", "前进", "希望", "明亮"],
+  },
+  {
+    text: "人生如逆旅，我亦是行人。",
+    source: "苏轼《临江仙·送钱穆父》",
+    type: "poem",
+    moods: ["calm", "sad", "tired"],
+    tags: ["人生", "旅途", "流动", "释然"],
+  },
+  {
+    text: "昨日今天，一年十载，天塌下来，当被盖。",
+    source: "蔡澜《青楼梦好》",
+    type: "book",
+    moods: ["tired", "calm", "anxious"],
+    tags: ["洒脱", "休息", "松弛", "日子"],
+  },
 ];
 
 const fallbackQuotes = quoteLibrary.slice(0, 6);
 
 const priorityTags: Record<Mood, string[]> = {
-  calm: ["宁静", "当下", "顺其自然", "平静", "放下"],
-  happy: ["快乐", "珍惜", "轻盈", "希望", "宇宙"],
+  calm: ["宁静", "当下", "顺其自然", "平静", "放下", "释然", "自由"],
+  happy: ["快乐", "珍惜", "轻盈", "希望", "宇宙", "明亮", "太阳", "春山"],
   anxious: ["迷茫", "勇气", "行动", "希望", "压力"],
   sad: ["痛苦", "共鸣", "安慰", "不孤单", "遗憾"],
   tired: ["休息", "暂停", "恢复", "疲惫", "自我照顾"],
-  angry: ["清醒", "边界", "委屈", "愤怒", "视角"],
+  angry: ["清醒", "边界", "委屈", "愤怒", "视角", "声音", "表达", "自由"],
 };
 
 function quoteScore(quote: QuoteCandidate, mood: Mood): number {
