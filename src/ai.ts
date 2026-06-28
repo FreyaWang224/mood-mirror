@@ -29,6 +29,8 @@ const moodLabels: Record<Mood, string> = {
 };
 
 const maxFieldLength = 180;
+const maxLetterLength = 420;
+const maxQuoteLength = 360;
 
 export class InvalidAnalysisInputError extends Error {
   constructor() {
@@ -76,6 +78,11 @@ function asShortText(value: unknown, fallback: string): string {
   return (text || fallback).slice(0, maxFieldLength);
 }
 
+function asText(value: unknown, fallback: string, maxLength: number): string {
+  const text = typeof value === "string" ? value.trim() : "";
+  return (text || fallback).slice(0, maxLength);
+}
+
 function normalizeAnalysis(value: unknown, fallbackMood: Mood): AnalysisResult {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new AiServiceError("AI response was not an object");
@@ -86,21 +93,48 @@ function normalizeAnalysis(value: unknown, fallbackMood: Mood): AnalysisResult {
     typeof record.mood === "string" && moods.has(record.mood as Mood)
       ? (record.mood as Mood)
       : fallbackMood;
+  const imageMood =
+    typeof record.imageMood === "string" && moods.has(record.imageMood as Mood)
+      ? (record.imageMood as Mood)
+      : mood;
 
   return {
     mood,
+    title: asShortText(record.title, `今天的你更接近${moodLabels[mood]}。`),
     companion: asShortText(
       record.companion,
       `我读到了你今天更接近${moodLabels[mood]}的心情。`,
     ),
+    letter: asText(
+      record.letter,
+      `我读到你今天更接近${moodLabels[mood]}。\n不必急着把一切说明白，先把这份感受好好放下。\n今晚可以给自己一点安静的位置。`,
+      maxLetterLength,
+    ),
     summary: asShortText(record.summary, "你今天的情绪正在被认真看见。"),
+    emotionInsight: asShortText(
+      record.emotionInsight,
+      typeof record.summary === "string" ? record.summary : "你今天的情绪正在被认真看见。",
+    ),
     reason: asShortText(record.reason, "这种感受可能来自今天具体经历和身体状态的共同作用。"),
+    innerReminder: asShortText(
+      record.innerReminder,
+      typeof record.reason === "string" ? record.reason : "它可能在提醒你，需要重新把注意力放回自己身上。",
+    ),
     advice: asShortText(record.advice, "先允许自己慢一点，再决定下一步要怎么走。"),
+    smallAction: asShortText(
+      record.smallAction,
+      typeof record.advice === "string" ? record.advice : "今晚做一件很小的照顾自己的事。",
+    ),
     keywords: asShortText(record.keywords, `${moodLabels[mood]}、整理、照顾自己`),
-    quote: asShortText(record.quote, "行到水穷处，坐看云起时。"),
+    quote: asText(record.quote, "行到水穷处，坐看云起时。", maxQuoteLength),
     source: asShortText(record.source, "王维《终南别业》"),
+    quoteReason: asShortText(
+      record.quoteReason,
+      "这句适合今天的你，因为它允许人在暂时没有答案的地方停一停。",
+    ),
     metaphorTitle: asShortText(record.metaphorTitle, "今日意象：一颗慢慢发光的小星球"),
     metaphorText: asShortText(record.metaphorText, "它不急着照亮全部宇宙，只先温柔地照见你。"),
+    imageMood,
     planetIndex: planetIndexes[mood],
   };
 }
@@ -114,12 +148,17 @@ function buildPrompt(input: AnalysisInput): string {
 
   return [
     "你是一个温柔、克制、不诊断疾病的中文 AI 情绪日记陪伴者。",
-    "请根据用户日记生成一张“今日共鸣星球”卡片。",
+    "请根据用户日记生成一张“今日共鸣星球”卡片，整体像一封写给用户的情绪回信。",
     "要求：只输出 JSON，不要 Markdown，不要解释；语言自然，有文学感，但不要过度鸡汤；不要编造具体事实。",
-    "JSON 字段必须为：mood, companion, summary, reason, advice, keywords, quote, source, metaphorTitle, metaphorText。",
+    "JSON 字段必须为：mood, title, companion, letter, summary, emotionInsight, reason, innerReminder, advice, smallAction, keywords, quote, source, quoteReason, metaphorTitle, metaphorText, imageMood。",
     "mood 只能是 happy、calm、anxious、sad、tired、angry 之一，可以参考用户预选心情，但允许根据正文调整。",
+    "title 是一句概括今日情绪的话，适合作为卡片大标题。",
+    "letter 是今日回信，3-5 句，每句独立成行，用 \\n 分隔，像温柔回应，不要说教。",
+    "emotionInsight 写“你今天主要的情绪是什么”；innerReminder 写“它可能在提醒你什么”；smallAction 写今晚一个很小、可执行的行动。",
     "quote 和 source 只能从候选摘句中选择一句，必须原文照抄，不允许改写、不允许自造、不允许使用候选之外的引用。",
-    "如果候选摘句都不完美，也要选其中最接近用户情绪的一句，并在 reason 或 advice 里自然解释它为什么贴近今天。",
+    "quoteReason 解释为什么这句适合今天。不要说“因为这句很美”，要贴近日记内容。",
+    "metaphorTitle 和 metaphorText 写具体画面描述。imageMood 只能是 happy、calm、anxious、sad、tired、angry 之一，用来选择图像。",
+    "如果候选摘句都不完美，也要选其中最接近用户情绪的一句，并在 quoteReason 里自然解释它为什么贴近今天。",
     "每个中文字段控制在 80 字以内，keywords 用顿号分隔。",
     "候选摘句：",
     quoteCandidates,

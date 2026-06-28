@@ -787,11 +787,11 @@
     }
 
     .resonance-card h1 {
-      margin: 0 0 18px;
+      margin: 0 0 12px;
       color: var(--paper-ink);
       font-family: var(--font-hand);
       font-weight: 400;
-      font-size: clamp(30px, 4vw, 34px);
+      font-size: clamp(32px, 4.3vw, 40px);
       letter-spacing: 1px;
       line-height: 1.18;
     }
@@ -801,56 +801,110 @@
       outline: none;
     }
 
-    .analysis-grid {
+    .letter-copy {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border: 1px solid rgba(94, 65, 36, 0.16);
+      border-radius: 8px;
+      background: rgba(255, 248, 226, 0.36);
+      color: var(--paper-ink);
+      font-family: var(--font-serif);
+      font-size: 15px;
+      line-height: 1.78;
+      white-space: pre-line;
+    }
+
+    .resonance-section-grid {
       display: grid;
       gap: 14px;
       margin-bottom: 18px;
     }
 
-    .analysis-grid section {
+    .resonance-note {
       padding-top: 14px;
       border-top: 1px solid rgba(66, 48, 30, 0.12);
     }
 
-    .analysis-grid section:first-child {
+    .resonance-note:first-child {
       padding-top: 0;
       border-top: 0;
     }
 
-    .analysis-grid h2,
-    .metaphor-copy h2 {
+    .resonance-note h2,
+    .quote-panel h2,
+    .metaphor-copy h2,
+    .saved-diary h2 {
       margin: 0 0 8px;
       color: var(--paper-accent);
       font-size: 16px;
       line-height: 1.3;
     }
 
-    .analysis-grid p,
+    .resonance-note p,
     .metaphor-copy p,
-    .resonance-card blockquote p,
-    .resonance-card blockquote cite {
+    .quote-panel p,
+    .quote-panel cite,
+    .saved-diary p {
       margin: 0;
       color: var(--paper-ink);
       font-size: 14px;
       line-height: 1.7;
     }
 
-    .resonance-card blockquote {
+    .quote-panel {
       margin: 0 0 18px;
       padding: 14px 0;
       border-top: 1px solid rgba(66, 48, 30, 0.12);
       border-bottom: 1px solid rgba(66, 48, 30, 0.12);
     }
 
-    .resonance-card blockquote cite {
+    .quote-panel blockquote {
+      margin: 0;
+    }
+
+    .quote-panel cite {
       display: block;
       margin-top: 8px;
       color: var(--paper-muted);
       font-style: normal;
     }
 
+    .quote-reason {
+      margin-top: 10px;
+      color: var(--paper-muted);
+    }
+
     .metaphor-copy {
+      display: grid;
+      grid-template-columns: minmax(112px, 0.4fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
       margin-bottom: 20px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(66, 48, 30, 0.12);
+    }
+
+    .metaphor-visual {
+      aspect-ratio: 1;
+      min-width: 0;
+      border: 1px solid rgba(94, 65, 36, 0.18);
+      border-radius: 8px;
+      background-image: url("assets/mood-visual-sheet.png");
+      background-size: 300% 200%;
+      background-repeat: no-repeat;
+      background-position: 0 0;
+      box-shadow: 0 8px 18px rgba(68, 42, 18, 0.16);
+    }
+
+    .metaphor-visual[data-mood="calm"] { background-position: 0 0; }
+    .metaphor-visual[data-mood="happy"] { background-position: 50% 0; }
+    .metaphor-visual[data-mood="anxious"] { background-position: 100% 0; }
+    .metaphor-visual[data-mood="sad"] { background-position: 0 100%; }
+    .metaphor-visual[data-mood="tired"] { background-position: 50% 100%; }
+    .metaphor-visual[data-mood="angry"] { background-position: 100% 100%; }
+
+    .metaphor-body {
+      min-width: 0;
     }
 
     .saved-diary {
@@ -859,18 +913,7 @@
       border-top: 1px solid rgba(66, 48, 30, 0.12);
     }
 
-    .saved-diary h2 {
-      margin: 0 0 8px;
-      color: var(--paper-accent);
-      font-size: 16px;
-      line-height: 1.3;
-    }
-
     .saved-diary p {
-      margin: 0;
-      color: var(--paper-ink);
-      font-size: 14px;
-      line-height: 1.7;
       white-space: pre-wrap;
       word-break: break-word;
     }
@@ -1962,7 +2005,7 @@
         line-height: 1.25;
       }
 
-      .analysis-grid {
+      .resonance-section-grid {
         grid-template-columns: 1fr;
       }
 
@@ -2093,6 +2136,20 @@
 
       .resonance-card h1 {
         font-size: 26px;
+      }
+
+      .letter-copy {
+        padding: 12px 14px;
+        font-size: 14px;
+      }
+
+      .metaphor-copy {
+        grid-template-columns: 1fr;
+      }
+
+      .metaphor-visual {
+        width: min(210px, 72%);
+        justify-self: center;
       }
 
       .mood-star {
@@ -2259,32 +2316,40 @@
       >
         <p class="paper-kicker">今日共鸣星球</p>
         <h1 id="resonanceTitle" class="resonance-title" tabindex="-1">你的情绪，被看见了</h1>
-        <div class="analysis-grid">
-          <section>
-            <h2>情绪总结</h2>
-            <p id="summaryText"></p>
+        <p id="letterText" class="letter-copy"></p>
+        <div class="metaphor-copy" aria-labelledby="metaphorTitle">
+          <div id="metaphorVisual" class="metaphor-visual" data-mood="calm" role="img" aria-label="今日意象插画"></div>
+          <div class="metaphor-body">
+            <h2 id="metaphorTitle"></h2>
+            <p id="metaphorText"></p>
+          </div>
+        </div>
+        <div class="resonance-section-grid">
+          <section class="resonance-note">
+            <h2>情绪解读</h2>
+            <p id="emotionInsightText"></p>
           </section>
-          <section>
-            <h2>可能原因</h2>
-            <p id="reasonText"></p>
+          <section class="resonance-note">
+            <h2>它可能在提醒你什么</h2>
+            <p id="innerReminderText"></p>
           </section>
-          <section>
-            <h2>温柔建议</h2>
-            <p id="adviceText"></p>
+          <section class="resonance-note">
+            <h2>今晚的小行动</h2>
+            <p id="smallActionText"></p>
           </section>
-          <section>
+          <section class="resonance-note">
             <h2>今日关键词</h2>
             <p id="keywordsText"></p>
           </section>
         </div>
-        <blockquote>
-          <p id="quoteText"></p>
-          <cite id="quoteSource"></cite>
-        </blockquote>
-        <div class="metaphor-copy">
-          <h2 id="metaphorTitle"></h2>
-          <p id="metaphorText"></p>
-        </div>
+        <section class="quote-panel" aria-labelledby="quoteHeading">
+          <h2 id="quoteHeading">今日引用</h2>
+          <blockquote>
+            <p id="quoteText"></p>
+            <cite id="quoteSource"></cite>
+          </blockquote>
+          <p id="quoteReasonText" class="quote-reason"></p>
+        </section>
         <section id="savedDiarySection" class="saved-diary" aria-labelledby="savedDiaryHeading">
           <h2 id="savedDiaryHeading">当时写下的片段</h2>
           <p id="savedDiaryText"></p>
@@ -2470,14 +2535,17 @@
     const revealCardButton = document.querySelector("#revealCardButton");
     const resonanceCard = document.querySelector("#resonanceCard");
     const resonanceTitle = document.querySelector("#resonanceTitle");
-    const summaryText = document.querySelector("#summaryText");
-    const reasonText = document.querySelector("#reasonText");
-    const adviceText = document.querySelector("#adviceText");
+    const letterText = document.querySelector("#letterText");
+    const emotionInsightText = document.querySelector("#emotionInsightText");
+    const innerReminderText = document.querySelector("#innerReminderText");
+    const smallActionText = document.querySelector("#smallActionText");
     const keywordsText = document.querySelector("#keywordsText");
     const quoteText = document.querySelector("#quoteText");
     const quoteSource = document.querySelector("#quoteSource");
+    const quoteReasonText = document.querySelector("#quoteReasonText");
     const metaphorTitle = document.querySelector("#metaphorTitle");
     const metaphorText = document.querySelector("#metaphorText");
+    const metaphorVisual = document.querySelector("#metaphorVisual");
     const savedDiaryText = document.querySelector("#savedDiaryText");
     const saveEntryButton = document.querySelector("#saveEntryButton");
     const returnHomeButton = document.querySelector("#returnHomeButton");
@@ -2647,15 +2715,22 @@
           mood,
           moodLabel: typeof item?.moodLabel === "string" ? item.moodLabel : profile.label,
           diary: typeof item?.diary === "string" ? item.diary : "",
+          title: typeof item?.title === "string" ? item.title : "你的情绪，被看见了",
           companion: typeof item?.companion === "string" ? item.companion : profile.companion,
+          letter: typeof item?.letter === "string" ? item.letter : profile.companion,
           summary: typeof item?.summary === "string" ? item.summary : profile.summary,
+          emotionInsight: typeof item?.emotionInsight === "string" ? item.emotionInsight : (typeof item?.summary === "string" ? item.summary : profile.summary),
           reason: typeof item?.reason === "string" ? item.reason : profile.reason,
+          innerReminder: typeof item?.innerReminder === "string" ? item.innerReminder : (typeof item?.reason === "string" ? item.reason : profile.reason),
           advice: typeof item?.advice === "string" ? item.advice : profile.advice,
+          smallAction: typeof item?.smallAction === "string" ? item.smallAction : (typeof item?.advice === "string" ? item.advice : profile.advice),
           keywords: typeof item?.keywords === "string" ? item.keywords : profile.keywords,
           quote: typeof item?.quote === "string" ? item.quote : profile.quote,
           source: typeof item?.source === "string" ? item.source : profile.source,
+          quoteReason: typeof item?.quoteReason === "string" ? item.quoteReason : "这句像是为今天的心情留出了一点回声。",
           metaphorTitle: typeof item?.metaphorTitle === "string" ? item.metaphorTitle : profile.metaphorTitle,
           metaphorText: typeof item?.metaphorText === "string" ? item.metaphorText : profile.metaphorText,
+          imageMood: typeof item?.imageMood === "string" && item.imageMood in moodProfiles ? item.imageMood : mood,
           planetIndex: Number.isInteger(item?.planetIndex) ? item.planetIndex : profile.planetIndex
         };
       });
@@ -2708,15 +2783,22 @@
         ...entry,
         mood,
         moodLabel: profile.label,
+        title: typeof analysis.title === "string" ? analysis.title : entry.title,
         companion: typeof analysis.companion === "string" ? analysis.companion : entry.companion,
+        letter: typeof analysis.letter === "string" ? analysis.letter : entry.letter,
         summary: typeof analysis.summary === "string" ? analysis.summary : entry.summary,
+        emotionInsight: typeof analysis.emotionInsight === "string" ? analysis.emotionInsight : entry.emotionInsight,
         reason: typeof analysis.reason === "string" ? analysis.reason : entry.reason,
+        innerReminder: typeof analysis.innerReminder === "string" ? analysis.innerReminder : entry.innerReminder,
         advice: typeof analysis.advice === "string" ? analysis.advice : entry.advice,
+        smallAction: typeof analysis.smallAction === "string" ? analysis.smallAction : entry.smallAction,
         keywords: typeof analysis.keywords === "string" ? analysis.keywords : entry.keywords,
         quote: typeof analysis.quote === "string" ? analysis.quote : entry.quote,
         source: typeof analysis.source === "string" ? analysis.source : entry.source,
+        quoteReason: typeof analysis.quoteReason === "string" ? analysis.quoteReason : entry.quoteReason,
         metaphorTitle: typeof analysis.metaphorTitle === "string" ? analysis.metaphorTitle : entry.metaphorTitle,
         metaphorText: typeof analysis.metaphorText === "string" ? analysis.metaphorText : entry.metaphorText,
+        imageMood: typeof analysis.imageMood === "string" && analysis.imageMood in moodProfiles ? analysis.imageMood : mood,
         planetIndex: Number.isInteger(analysis.planetIndex) ? analysis.planetIndex : profile.planetIndex
       };
     }
@@ -2724,24 +2806,33 @@
     function serializeAnalysis(entry) {
       const payload = {
         mood: entry.mood,
+        title: entry.title,
         companion: entry.companion,
+        letter: entry.letter,
         summary: entry.summary,
+        emotionInsight: entry.emotionInsight,
         reason: entry.reason,
+        innerReminder: entry.innerReminder,
         advice: entry.advice,
+        smallAction: entry.smallAction,
         keywords: entry.keywords,
         quote: entry.quote,
         source: entry.source,
+        quoteReason: entry.quoteReason,
         metaphorTitle: entry.metaphorTitle,
-        metaphorText: entry.metaphorText
+        metaphorText: entry.metaphorText,
+        imageMood: entry.imageMood
       };
       const serialized = JSON.stringify(payload);
       return serialized.length <= 1900
         ? serialized
         : JSON.stringify({
           mood: entry.mood,
+          title: entry.title,
           companion: entry.companion,
-          summary: entry.summary,
-          advice: entry.advice
+          letter: entry.letter,
+          quote: entry.quote,
+          source: entry.source
         });
     }
 
@@ -2975,15 +3066,22 @@
         mood,
         moodLabel: profile.label,
         diary,
+        title: "你的情绪，被看见了",
         companion: profile.companion,
+        letter: `${profile.companion}\n${profile.advice}`,
         summary: profile.summary,
+        emotionInsight: profile.summary,
         reason: profile.reason,
+        innerReminder: profile.reason,
         advice: profile.advice,
+        smallAction: profile.advice,
         keywords: profile.keywords,
         quote: profile.quote,
         source: profile.source,
+        quoteReason: "这句像是为今天的心情留出了一点回声。",
         metaphorTitle: profile.metaphorTitle,
         metaphorText: profile.metaphorText,
+        imageMood: mood,
         planetIndex: profile.planetIndex
       };
     }
@@ -3062,14 +3160,19 @@
 
     function renderEntry(entry) {
       companionResponse.textContent = entry.companion;
-      summaryText.textContent = entry.summary;
-      reasonText.textContent = entry.reason;
-      adviceText.textContent = entry.advice;
+      resonanceTitle.textContent = entry.title || "你的情绪，被看见了";
+      letterText.textContent = entry.letter;
+      emotionInsightText.textContent = entry.emotionInsight || entry.summary;
+      innerReminderText.textContent = entry.innerReminder || entry.reason;
+      smallActionText.textContent = entry.smallAction || entry.advice;
       keywordsText.textContent = entry.keywords;
       quoteText.textContent = entry.quote;
       quoteSource.textContent = entry.source;
+      quoteReasonText.textContent = entry.quoteReason;
       metaphorTitle.textContent = entry.metaphorTitle;
       metaphorText.textContent = entry.metaphorText;
+      metaphorVisual.dataset.mood = entry.imageMood || entry.mood;
+      metaphorVisual.setAttribute("aria-label", entry.metaphorTitle || "今日意象插画");
       savedDiaryText.textContent = entry.diary;
       resonanceWorld.dataset.mood = entry.mood;
       resonanceWorld.style.setProperty(

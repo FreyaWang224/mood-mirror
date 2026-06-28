@@ -37,14 +37,21 @@ export interface AnalysisInput {
 
 export interface AnalysisResult {
   mood: Mood;
+  title: string;
   companion: string;
+  letter: string;
   summary: string;
+  emotionInsight: string;
   reason: string;
+  innerReminder: string;
   advice: string;
+  smallAction: string;
   keywords: string;
   quote: string;
   source: string;
+  quoteReason: string;
   metaphorTitle: string;
   metaphorText: string;
+  imageMood: Mood;
   planetIndex: number;
 }

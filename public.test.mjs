@@ -37,6 +37,10 @@ for (const asset of [
     `Expected the deployed page to reference public asset: ${asset}`,
   );
 }
+assert.ok(
+  existsSync(new URL("./public/assets/mood-visual-sheet.png", import.meta.url)),
+  "Expected mood-visual-sheet.png to be copied into public/assets.",
+);
 
 // Cloud persistence: history and saving go through the Worker API, not the browser.
 assert.match(html, /async function loadHistory\s*\(/);
@@ -78,6 +82,21 @@ assert.match(
   html,
   /function serializeAnalysis\s*\(/,
   "The deployed page should serialize generated analysis for D1 history.",
+);
+for (const id of [
+  "letterText",
+  "emotionInsightText",
+  "innerReminderText",
+  "smallActionText",
+  "quoteReasonText",
+  "metaphorVisual",
+]) {
+  assert.match(html, new RegExp(`id=["']${id}["']`), `Expected resonance card field #${id}.`);
+}
+assert.match(
+  html,
+  /assets\/mood-visual-sheet\.png/,
+  "The resonance card should reuse the existing mood visual sheet.",
 );
 assert.ok(
   !html.includes("DEEPSEEK_API_KEY"),
