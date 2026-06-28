@@ -144,7 +144,7 @@ describe("diary entries API", () => {
     const response = await api("/api/analyze", {
       method: "POST",
       headers: { ...authHeaders, "content-type": "application/json" },
-      body: JSON.stringify({ content: "今天终于松了一口气", mood: "calm" }),
+      body: JSON.stringify({ content: "今天累到只想好好休息", mood: "tired" }),
     });
 
     expect(response.status).toBe(200);
@@ -171,7 +171,16 @@ describe("diary entries API", () => {
         }),
       }),
     );
-
+    const requestBody = JSON.parse(
+      (deepSeekFetch.mock.calls[0][1] as RequestInit).body as string,
+    ) as { messages: Array<{ role: string; content: string }> };
+    const userPrompt = requestBody.messages.find(
+      (message) => message.role === "user",
+    )?.content;
+    expect(userPrompt).toContain("候选摘句");
+    expect(userPrompt).toContain("只能从候选摘句中选择一句");
+    expect(userPrompt).toContain("人时已尽，人世还长，我在中间，应该休息。");
+    expect(userPrompt).toContain("顾城");
   });
 
   it("creates a valid entry with a UUID and camelCase fields", async () => {

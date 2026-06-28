@@ -1,4 +1,5 @@
 import type { AnalysisInput, AnalysisResult, Env, Mood } from "./types";
+import { selectQuoteCandidates } from "./quotes";
 
 const moods = new Set<Mood>([
   "happy",
@@ -105,13 +106,23 @@ function normalizeAnalysis(value: unknown, fallbackMood: Mood): AnalysisResult {
 }
 
 function buildPrompt(input: AnalysisInput): string {
+  const quoteCandidates = selectQuoteCandidates(input.mood)
+    .map((quote, index) => (
+      `${index + 1}. “${quote.text}” — ${quote.source}（标签：${quote.tags.join("、")}）`
+    ))
+    .join("\n");
+
   return [
     "你是一个温柔、克制、不诊断疾病的中文 AI 情绪日记陪伴者。",
     "请根据用户日记生成一张“今日共鸣星球”卡片。",
-    "要求：只输出 JSON，不要 Markdown，不要解释；语言自然，有文学感，但不要过度鸡汤；不要编造具体事实；引用优先使用真实诗句、文学句子或电影台词，无法确定来源时用广义出处。",
+    "要求：只输出 JSON，不要 Markdown，不要解释；语言自然，有文学感，但不要过度鸡汤；不要编造具体事实。",
     "JSON 字段必须为：mood, companion, summary, reason, advice, keywords, quote, source, metaphorTitle, metaphorText。",
     "mood 只能是 happy、calm、anxious、sad、tired、angry 之一，可以参考用户预选心情，但允许根据正文调整。",
+    "quote 和 source 只能从候选摘句中选择一句，必须原文照抄，不允许改写、不允许自造、不允许使用候选之外的引用。",
+    "如果候选摘句都不完美，也要选其中最接近用户情绪的一句，并在 reason 或 advice 里自然解释它为什么贴近今天。",
     "每个中文字段控制在 80 字以内，keywords 用顿号分隔。",
+    "候选摘句：",
+    quoteCandidates,
     `用户预选心情：${input.mood}`,
     `日记正文：${input.content}`,
   ].join("\n");

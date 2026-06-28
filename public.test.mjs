@@ -6,6 +6,7 @@ const vitestConfig = readFileSync(
   new URL("./vitest.config.mts", import.meta.url),
   "utf8",
 );
+const quotesSource = readFileSync(new URL("./src/quotes.ts", import.meta.url), "utf8");
 
 // The deployed page is the emotion-planet UI with its mood metaphors retained.
 for (const text of [
@@ -81,6 +82,12 @@ assert.match(
 assert.ok(
   !html.includes("DEEPSEEK_API_KEY"),
   "DeepSeek secrets must never appear in browser HTML.",
+);
+assert.ok(
+  quotesSource.includes("quoteLibrary") &&
+    quotesSource.includes("人时已尽，人世还长，我在中间，应该休息。") &&
+    quotesSource.includes("priorityTags"),
+  "The backend should keep the curated quote library and mood priority tags.",
 );
 
 // On 401 the stored token is cleared and a visible Chinese message is shown.
