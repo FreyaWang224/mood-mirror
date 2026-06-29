@@ -889,7 +889,7 @@
       min-width: 0;
       border: 1px solid rgba(94, 65, 36, 0.18);
       border-radius: 8px;
-      background-image: url("assets/mood-visual-sheet.png");
+      background-image: var(--mood-visual-sheet, url("assets/mood-visual-sheet.png"));
       background-size: 300% 200%;
       background-repeat: no-repeat;
       background-position: 0 0;
@@ -2509,6 +2509,12 @@
 
     const storageKey = "mood-mirror-history-v2";
     const legacyStorageKey = "ai-emotion-diary-history";
+    const moodVisualSheets = [
+      "assets/mood-visual-sheet.png",
+      "assets/mood-gallery/mood-visual-sheet-02.png",
+      "assets/mood-gallery/mood-visual-sheet-03.png",
+      "assets/mood-gallery/mood-visual-sheet-04.png"
+    ];
     const appRoot = document.querySelector("#appRoot");
     const homeScene = document.querySelector("#homeScene");
     const journalLayer = document.querySelector("#journalLayer");
@@ -2708,8 +2714,10 @@
           ? fallbackDate.toISOString()
           : createdAtDate.toISOString();
 
+        const id = typeof item?.id === "string" && item.id ? item.id : `legacy-${index}-${mood}`;
+
         return {
-          id: typeof item?.id === "string" && item.id ? item.id : `legacy-${index}-${mood}`,
+          id,
           createdAt,
           date: typeof item?.date === "string" && item.date ? item.date : formatDate(new Date(createdAt)),
           mood,
@@ -2731,6 +2739,7 @@
           metaphorTitle: typeof item?.metaphorTitle === "string" ? item.metaphorTitle : profile.metaphorTitle,
           metaphorText: typeof item?.metaphorText === "string" ? item.metaphorText : profile.metaphorText,
           imageMood: typeof item?.imageMood === "string" && item.imageMood in moodProfiles ? item.imageMood : mood,
+          imageSheet: normalizeMoodVisualSheet(item?.imageSheet, `${id}-${mood}`),
           planetIndex: Number.isInteger(item?.planetIndex) ? item.planetIndex : profile.planetIndex
         };
       });
@@ -2769,6 +2778,24 @@
       }
     }
 
+    function hashString(value) {
+      let hash = 0;
+      for (let index = 0; index < value.length; index += 1) {
+        hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+      }
+      return hash;
+    }
+
+    function pickMoodVisualSheet(seed) {
+      return moodVisualSheets[hashString(seed) % moodVisualSheets.length];
+    }
+
+    function normalizeMoodVisualSheet(value, seed) {
+      return typeof value === "string" && moodVisualSheets.includes(value)
+        ? value
+        : pickMoodVisualSheet(seed);
+    }
+
     function applyAnalysisToEntry(entry, analysis) {
       if (!analysis || typeof analysis !== "object") {
         return entry;
@@ -2799,6 +2826,10 @@
         metaphorTitle: typeof analysis.metaphorTitle === "string" ? analysis.metaphorTitle : entry.metaphorTitle,
         metaphorText: typeof analysis.metaphorText === "string" ? analysis.metaphorText : entry.metaphorText,
         imageMood: typeof analysis.imageMood === "string" && analysis.imageMood in moodProfiles ? analysis.imageMood : mood,
+        imageSheet: normalizeMoodVisualSheet(
+          typeof analysis.imageSheet === "string" ? analysis.imageSheet : entry.imageSheet,
+          `${entry.id}-${entry.diary}-${mood}`,
+        ),
         planetIndex: Number.isInteger(analysis.planetIndex) ? analysis.planetIndex : profile.planetIndex
       };
     }
@@ -2821,7 +2852,8 @@
         quoteReason: entry.quoteReason,
         metaphorTitle: entry.metaphorTitle,
         metaphorText: entry.metaphorText,
-        imageMood: entry.imageMood
+        imageMood: entry.imageMood,
+        imageSheet: entry.imageSheet
       };
       const serialized = JSON.stringify(payload);
       return serialized.length <= 1900
@@ -2832,7 +2864,8 @@
           companion: entry.companion,
           letter: entry.letter,
           quote: entry.quote,
-          source: entry.source
+          source: entry.source,
+          imageSheet: entry.imageSheet
         });
     }
 
@@ -3082,6 +3115,7 @@
         metaphorTitle: profile.metaphorTitle,
         metaphorText: profile.metaphorText,
         imageMood: mood,
+        imageSheet: pickMoodVisualSheet(`${createdAt.toISOString()}-${mood}-${diary}`),
         planetIndex: profile.planetIndex
       };
     }
@@ -3172,6 +3206,10 @@
       metaphorTitle.textContent = entry.metaphorTitle;
       metaphorText.textContent = entry.metaphorText;
       metaphorVisual.dataset.mood = entry.imageMood || entry.mood;
+      metaphorVisual.style.setProperty(
+        "--mood-visual-sheet",
+        `url("${normalizeMoodVisualSheet(entry.imageSheet, `${entry.id}-${entry.mood}`)}")`
+      );
       metaphorVisual.setAttribute("aria-label", entry.metaphorTitle || "今日意象插画");
       savedDiaryText.textContent = entry.diary;
       resonanceWorld.dataset.mood = entry.mood;

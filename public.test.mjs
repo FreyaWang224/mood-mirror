@@ -41,6 +41,13 @@ assert.ok(
   existsSync(new URL("./public/assets/mood-visual-sheet.png", import.meta.url)),
   "Expected mood-visual-sheet.png to be copied into public/assets.",
 );
+for (const asset of [
+  "./public/assets/mood-gallery/mood-visual-sheet-02.png",
+  "./public/assets/mood-gallery/mood-visual-sheet-03.png",
+  "./public/assets/mood-gallery/mood-visual-sheet-04.png",
+]) {
+  assert.ok(existsSync(new URL(asset, import.meta.url)), `Expected generated gallery asset: ${asset}`);
+}
 
 // Cloud persistence: history and saving go through the Worker API, not the browser.
 assert.match(html, /async function loadHistory\s*\(/);
@@ -95,8 +102,18 @@ for (const id of [
 }
 assert.match(
   html,
-  /assets\/mood-visual-sheet\.png/,
-  "The resonance card should reuse the existing mood visual sheet.",
+  /moodVisualSheets/,
+  "The resonance card should keep a selectable mood visual gallery.",
+);
+assert.match(
+  html,
+  /assets\/mood-gallery\/mood-visual-sheet-02\.png/,
+  "The resonance card should reference generated mood gallery sheets.",
+);
+assert.match(
+  html,
+  /imageSheet/,
+  "Saved analysis should keep the selected mood visual sheet stable.",
 );
 assert.ok(
   !html.includes("DEEPSEEK_API_KEY"),
