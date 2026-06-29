@@ -31,6 +31,7 @@ const moodLabels: Record<Mood, string> = {
 const maxFieldLength = 180;
 const maxLetterLength = 420;
 const maxQuoteLength = 360;
+const retryableDeepSeekStatuses = new Set([429, 500, 502, 503, 504]);
 
 export class InvalidAnalysisInputError extends Error {
   constructor() {
@@ -167,14 +168,22 @@ function buildPrompt(input: AnalysisInput): string {
   ].join("\n");
 }
 
-export async function analyzeDiary(
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function parseDeepSeekJson(content: string): unknown {
+  const trimmed = content.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return JSON.parse(fenced ? fenced[1] : trimmed);
+}
+
+async function requestDeepSeekAnalysis(
   env: Env,
   input: AnalysisInput,
 ): Promise<AnalysisResult> {
-  if (!env.DEEPSEEK_API_KEY) {
-    throw new AiServiceNotConfiguredError();
-  }
-
   const response = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
@@ -195,8 +204,8 @@ export async function analyzeDiary(
         },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.8,
-      max_tokens: 650,
+      temperature: 0.6,
+      max_tokens: 1200,
     }),
   });
 
@@ -213,11 +222,53 @@ export async function analyzeDiary(
   }
 
   try {
-    return normalizeAnalysis(JSON.parse(content), input.mood);
+    return normalizeAnalysis(parseDeepSeekJson(content), input.mood);
   } catch (error) {
     if (error instanceof AiServiceError) {
       throw error;
     }
     throw new AiServiceError("DeepSeek returned invalid JSON");
   }
+}
+
+function isRetryableAiError(error: unknown): boolean {
+  if (!(error instanceof AiServiceError)) {
+    return false;
+  }
+  const status = error.message.match(/^DeepSeek HTTP (\d+)$/)?.[1];
+  return (
+    error.message === "DeepSeek returned invalid JSON" ||
+    error.message === "DeepSeek response did not include content" ||
+    (status ? retryableDeepSeekStatuses.has(Number(status)) : false)
+  );
+}
+
+export async function analyzeDiary(
+  env: Env,
+  input: AnalysisInput,
+): Promise<AnalysisResult> {
+  if (!env.DEEPSEEK_API_KEY) {
+    throw new AiServiceNotConfiguredError();
+  }
+
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await requestDeepSeekAnalysis(env, input);
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableAiError(error) || attempt === 2) {
+        throw error;
+      }
+      await sleep(250 * (attempt + 1));
+    }
+  }
+
+  if (lastError instanceof AiServiceError) {
+    throw lastError;
+  }
+  if (lastError instanceof Error) {
+    throw new AiServiceError(lastError.message);
+  }
+  throw new AiServiceError("DeepSeek request failed");
 }

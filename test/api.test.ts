@@ -200,6 +200,64 @@ describe("diary entries API", () => {
     expect(userPrompt).toContain("顾城");
   });
 
+  it("retries transient DeepSeek failures before returning analysis", async () => {
+    const deepSeekFetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({ error: { message: "overloaded" } }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  mood: "anxious",
+                  title: "慢一点，也是在练习。",
+                  companion: "我读到了你的着急。",
+                  letter: "今天的你有点紧绷。\n这份紧绷来自你对表达的认真。\n先允许自己慢一点。",
+                  summary: "你今天整体更接近焦虑。",
+                  emotionInsight: "你今天主要的情绪是焦虑。",
+                  reason: "你对即时表达有很高期待。",
+                  innerReminder: "它可能在提醒你，熟练需要被允许慢慢长出来。",
+                  advice: "先把练习目标收小。",
+                  smallAction: "今晚只录一段 30 秒即兴表达。",
+                  keywords: "焦虑、练习、表达",
+                  quote: "有些事不是看到了希望才去坚持，而是因为坚持才会看到希望。",
+                  source: "《十宗罪》",
+                  quoteReason: "这句贴合你现在还在练习中的状态。",
+                  metaphorTitle: "今日意象：慢慢松开的毛线",
+                  metaphorText: "线头已经被你找到了。",
+                  imageMood: "anxious",
+                }),
+              },
+            },
+          ],
+        }),
+      } as Response);
+
+    const response = await api("/api/analyze", {
+      method: "POST",
+      headers: { ...ownerHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ content: "托福口语好难练", mood: "anxious" }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      mood: "anxious",
+      title: "慢一点，也是在练习。",
+    });
+    expect(deepSeekFetch).toHaveBeenCalledTimes(2);
+    const requestBody = JSON.parse(
+      (deepSeekFetch.mock.calls[1][1] as RequestInit).body as string,
+    ) as { max_tokens: number };
+    expect(requestBody.max_tokens).toBeGreaterThanOrEqual(1000);
+  });
+
   it("creates a valid entry with a UUID and camelCase fields", async () => {
     const response = await api("/api/entries", {
       method: "POST",
