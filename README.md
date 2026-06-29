@@ -68,25 +68,23 @@ npx wrangler d1 create emotion-diary-db
 
 ## 安全状态
 
-日记 API 使用 `DIARY_ACCESS_TOKEN` 口令保护。`/api/health` 仍然公开用于健康检查；`/api/entries` 和单条日记读写都需要浏览器带上正确口令。
+日记 API 使用轻量“试用身份”隔离。`/api/health` 公开用于健康检查；`/api/analyze`、`/api/entries` 和单条日记读写都需要浏览器带上 `X-Diary-Owner` 请求头。这个值来自页面右上角输入的试用名字 / 邀请码。
 
 本地开发时，在项目根目录创建 `.dev.vars`：
 
 ```dotenv
-DIARY_ACCESS_TOKEN=your-local-token
 DEEPSEEK_API_KEY=your-deepseek-api-key
 ```
 
-线上部署前，将同名 Secret 写入 Cloudflare：
+线上部署前，将 DeepSeek Secret 写入 Cloudflare：
 
 ```bash
-npx wrangler secret put DIARY_ACCESS_TOKEN
 npx wrangler secret put DEEPSEEK_API_KEY
 ```
 
-第一次打开页面或口令失效时，浏览器会提示输入“日记访问口令”。口令只保存在当前浏览器会话的 `sessionStorage` 中；关闭标签页或浏览器后可能需要重新输入。
+第一次打开页面时，浏览器会提示输入“试用名字 / 邀请码”。该身份只保存在当前浏览器的 `localStorage` 中，用于让不同朋友读取和保存到各自的日记空间。
 
-这不是完整账号系统。如果以后要长期存放真实隐私内容，建议升级到 Cloudflare Access，用邮箱或身份提供商保护整个站点。
+这不是完整账号系统。如果邀请码被转发，拿到同一个邀请码的人仍然可以看到同一个空间。以后要长期存放真实隐私内容，建议升级到正式登录、Cloudflare Access，或用邮箱/身份提供商保护整个站点。
 
 ## Secret
 
@@ -122,6 +120,12 @@ npx wrangler secret put SECRET_NAME
 ```
 
 `mood` 可取 `happy`、`calm`、`anxious`、`sad`、`tired`、`angry`；`intensity` 范围为 1–5。
+
+除 `/api/health` 外，请求需要带上试用身份：
+
+```http
+X-Diary-Owner: friend01
+```
 
 | 方法 | 路径 | 说明 | 成功响应 |
 | --- | --- | --- | --- |

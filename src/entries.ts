@@ -1,4 +1,4 @@
-import type { Entry, EntryInput, Mood } from "./types";
+import type { Entry, EntryInput, Mood, OwnerId } from "./types";
 
 const moods = new Set<Mood>([
   "happy",
@@ -11,6 +11,7 @@ const moods = new Set<Mood>([
 
 interface EntryRow {
   id: string;
+  owner_id: OwnerId;
   content: string;
   mood: Mood;
   intensity: number;
@@ -23,6 +24,24 @@ export class InvalidEntryError extends Error {
   constructor() {
     super("Invalid entry");
   }
+}
+
+export class InvalidOwnerError extends Error {
+  constructor() {
+    super("Invalid owner");
+  }
+}
+
+export function validateOwnerId(value: unknown): OwnerId {
+  if (typeof value !== "string") {
+    throw new InvalidOwnerError();
+  }
+
+  const ownerId = value.trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9_-]{1,39}$/.test(ownerId)) {
+    throw new InvalidOwnerError();
+  }
+  return ownerId;
 }
 
 export function validateEntryInput(value: unknown): EntryInput {
@@ -66,6 +85,7 @@ export function validateEntryInput(value: unknown): EntryInput {
 function mapEntry(row: EntryRow): Entry {
   return {
     id: row.id,
+    ownerId: row.owner_id,
     content: row.content,
     mood: row.mood,
     intensity: row.intensity,
@@ -76,30 +96,36 @@ function mapEntry(row: EntryRow): Entry {
 }
 
 const selectColumns = `
-  SELECT id, content, mood, intensity, ai_response, created_at, updated_at
+  SELECT id, owner_id, content, mood, intensity, ai_response, created_at, updated_at
   FROM entries
 `;
 
-export async function listEntries(db: D1Database): Promise<Entry[]> {
+export async function listEntries(
+  db: D1Database,
+  ownerId: OwnerId,
+): Promise<Entry[]> {
   const result = await db
-    .prepare(`${selectColumns} ORDER BY created_at DESC LIMIT 50`)
+    .prepare(`${selectColumns} WHERE owner_id = ? ORDER BY created_at DESC LIMIT 50`)
+    .bind(ownerId)
     .all<EntryRow>();
   return result.results.map(mapEntry);
 }
 
 export async function getEntry(
   db: D1Database,
+  ownerId: OwnerId,
   id: string,
 ): Promise<Entry | null> {
   const row = await db
-    .prepare(`${selectColumns} WHERE id = ?`)
-    .bind(id)
+    .prepare(`${selectColumns} WHERE id = ? AND owner_id = ?`)
+    .bind(id, ownerId)
     .first<EntryRow>();
   return row === null ? null : mapEntry(row);
 }
 
 export async function createEntry(
   db: D1Database,
+  ownerId: OwnerId,
   input: EntryInput,
 ): Promise<Entry> {
   const id = crypto.randomUUID();
@@ -108,11 +134,12 @@ export async function createEntry(
   await db
     .prepare(
       `INSERT INTO entries
-        (id, content, mood, intensity, ai_response, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (id, owner_id, content, mood, intensity, ai_response, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
+      ownerId,
       input.content,
       input.mood,
       input.intensity,
@@ -124,6 +151,7 @@ export async function createEntry(
 
   return {
     id,
+    ownerId,
     content: input.content,
     mood: input.mood,
     intensity: input.intensity,
@@ -135,6 +163,7 @@ export async function createEntry(
 
 export async function updateEntry(
   db: D1Database,
+  ownerId: OwnerId,
   id: string,
   input: EntryInput,
 ): Promise<Entry | null> {
@@ -143,7 +172,7 @@ export async function updateEntry(
     .prepare(
       `UPDATE entries
        SET content = ?, mood = ?, intensity = ?, ai_response = ?, updated_at = ?
-       WHERE id = ?`,
+       WHERE id = ? AND owner_id = ?`,
     )
     .bind(
       input.content,
@@ -152,6 +181,7 @@ export async function updateEntry(
       input.aiResponse ?? null,
       updatedAt,
       id,
+      ownerId,
     )
     .run();
 
@@ -159,16 +189,17 @@ export async function updateEntry(
     return null;
   }
 
-  return getEntry(db, id);
+  return getEntry(db, ownerId, id);
 }
 
 export async function deleteEntry(
   db: D1Database,
+  ownerId: OwnerId,
   id: string,
 ): Promise<boolean> {
   const result = await db
-    .prepare("DELETE FROM entries WHERE id = ?")
-    .bind(id)
+    .prepare("DELETE FROM entries WHERE id = ? AND owner_id = ?")
+    .bind(id, ownerId)
     .run();
   return result.meta.changes > 0;
 }

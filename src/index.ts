@@ -10,8 +10,10 @@ import {
   deleteEntry,
   getEntry,
   InvalidEntryError,
+  InvalidOwnerError,
   listEntries,
   updateEntry,
+  validateOwnerId,
   validateEntryInput,
 } from "./entries";
 import type { Env } from "./types";
@@ -35,24 +37,8 @@ function empty(status: number): Response {
   });
 }
 
-function unauthorized(): Response {
-  return new Response(JSON.stringify({ error: "Unauthorized" }), {
-    status: 401,
-    headers: {
-      ...jsonHeaders,
-      "www-authenticate": "Bearer",
-    },
-  });
-}
-
-function isAuthorized(request: Request, env: Env): boolean {
-  const expectedToken = env.DIARY_ACCESS_TOKEN;
-  const authorization = request.headers.get("authorization");
-  return (
-    typeof expectedToken === "string" &&
-    expectedToken.length > 0 &&
-    authorization === `Bearer ${expectedToken}`
-  );
+function readOwnerId(request: Request) {
+  return validateOwnerId(request.headers.get("x-diary-owner"));
 }
 
 async function readEntryInput(request: Request) {
@@ -92,56 +78,48 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   }
 
   if (pathname === "/api/analyze") {
-    if (!isAuthorized(request, env)) {
-      return unauthorized();
-    }
-
     if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405);
     }
 
+    readOwnerId(request);
     const input = await readAnalysisInput(request);
     return json(await analyzeDiary(env, input));
   }
 
   if (pathname === "/api/entries") {
-    if (!isAuthorized(request, env)) {
-      return unauthorized();
-    }
+    const ownerId = readOwnerId(request);
 
     if (request.method === "GET") {
-      return json(await listEntries(env.DB));
+      return json(await listEntries(env.DB, ownerId));
     }
     if (request.method === "POST") {
       const input = await readEntryInput(request);
-      return json(await createEntry(env.DB, input), 201);
+      return json(await createEntry(env.DB, ownerId, input), 201);
     }
     return json({ error: "Method not allowed" }, 405);
   }
 
   const match = pathname.match(/^\/api\/entries\/([^/]+)$/);
   if (match) {
-    if (!isAuthorized(request, env)) {
-      return unauthorized();
-    }
-
+    const ownerId = readOwnerId(request);
     const id = match[1];
 
     if (request.method === "GET") {
-      const entry = await getEntry(env.DB, id);
+      const entry = await getEntry(env.DB, ownerId, id);
       return entry === null
         ? json({ error: "Not found" }, 404)
         : json(entry);
     }
     if (request.method === "PUT") {
       const input = await readEntryInput(request);
-      const entry = await updateEntry(env.DB, id, input);
+      const entry = await updateEntry(env.DB, ownerId, id, input);
       return entry === null
         ? json({ error: "Not found" }, 404)
         : json(entry);
     }
     if (request.method === "DELETE") {
-      return (await deleteEntry(env.DB, id))
+      return (await deleteEntry(env.DB, ownerId, id))
         ? empty(204)
         : json({ error: "Not found" }, 404);
     }
@@ -163,6 +141,9 @@ export default {
     } catch (error) {
       if (error instanceof InvalidEntryError) {
         return json({ error: "Invalid entry" }, 400);
+      }
+      if (error instanceof InvalidOwnerError) {
+        return json({ error: "Invalid owner" }, 400);
       }
       if (error instanceof InvalidAnalysisInputError) {
         return json({ error: "Invalid analysis request" }, 400);

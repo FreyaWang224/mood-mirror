@@ -5,7 +5,12 @@ const migration = await readFile(
   new URL("../migrations/0001_create_entries.sql", import.meta.url),
   "utf8",
 );
+const ownerMigration = await readFile(
+  new URL("../migrations/0002_add_entry_owner.sql", import.meta.url),
+  "utf8",
+);
 const normalizedMigration = migration.replace(/\s+/g, " ").trim();
+const normalizedOwnerMigration = ownerMigration.replace(/\s+/g, " ").trim();
 
 assert.match(migration, /CREATE TABLE IF NOT EXISTS entries/i);
 assert.match(migration, /\bid\s+TEXT\s+PRIMARY KEY\b/i);
@@ -27,6 +32,14 @@ assert.match(normalizedMigration, /\bupdated_at TEXT NOT NULL\s*\)/i);
 assert.match(
   normalizedMigration,
   /CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries\s*\(created_at DESC\)/i,
+);
+assert.match(
+  normalizedOwnerMigration,
+  /ALTER TABLE entries ADD COLUMN owner_id TEXT NOT NULL DEFAULT 'freya' CHECK \(length\(owner_id\) BETWEEN 2 AND 40\)/i,
+);
+assert.match(
+  normalizedOwnerMigration,
+  /CREATE INDEX IF NOT EXISTS idx_entries_owner_created_at ON entries\s*\(owner_id, created_at DESC\)/i,
 );
 
 console.log("schema migration test passed");

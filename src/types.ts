@@ -1,9 +1,10 @@
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
-  DIARY_ACCESS_TOKEN?: string;
   DEEPSEEK_API_KEY?: string;
 }
+
+export type OwnerId = string;
 
 export type Mood =
   | "happy"
@@ -15,6 +16,7 @@ export type Mood =
 
 export interface Entry {
   id: string;
+  ownerId: OwnerId;
   content: string;
   mood: Mood;
   intensity: number;

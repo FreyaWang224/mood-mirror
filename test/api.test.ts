@@ -5,14 +5,13 @@ import type { Env } from "../src/types";
 const api = (path: string, init?: RequestInit) =>
   SELF.fetch(`https://example.com${path}`, init);
 
-const accessToken = "test-access-token";
-const authHeaders = { authorization: `Bearer ${accessToken}` };
+const ownerHeaders = { "x-diary-owner": "friend-a" };
 
-function withAuth(init: RequestInit = {}): RequestInit {
+function withOwner(init: RequestInit = {}, ownerId = "friend-a"): RequestInit {
   return {
     ...init,
     headers: {
-      ...authHeaders,
+      "x-diary-owner": ownerId,
       ...(init.headers ?? {}),
     },
   };
@@ -30,7 +29,7 @@ async function createEntry(
 ): Promise<Record<string, unknown>> {
   const response = await api("/api/entries", {
     method: "POST",
-    headers: { ...authHeaders, "content-type": "application/json" },
+    headers: { ...ownerHeaders, "content-type": "application/json" },
     body: JSON.stringify(input),
   });
 
@@ -43,6 +42,7 @@ beforeEach(async () => {
     .prepare(
       `CREATE TABLE IF NOT EXISTS entries (
       id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL DEFAULT 'freya' CHECK (length(owner_id) BETWEEN 2 AND 40),
       content TEXT NOT NULL CHECK (length(content) BETWEEN 1 AND 400),
       mood TEXT NOT NULL CHECK (
         mood IN ('happy', 'calm', 'anxious', 'sad', 'tired', 'angry')
@@ -57,6 +57,11 @@ beforeEach(async () => {
   await env.DB
     .prepare(
       "CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries (created_at DESC)",
+    )
+    .run();
+  await env.DB
+    .prepare(
+      "CREATE INDEX IF NOT EXISTS idx_entries_owner_created_at ON entries (owner_id, created_at DESC)",
     )
     .run();
   await env.DB.prepare("DELETE FROM entries").run();
@@ -75,39 +80,37 @@ describe("diary entries API", () => {
     expect(await response.json()).toEqual({ ok: true });
   });
 
-  it("requires a bearer token for diary entries", async () => {
+  it("requires an invite identity for diary entries", async () => {
     const response = await api("/api/entries");
 
-    expect(response.status).toBe(401);
-    expect(response.headers.get("www-authenticate")).toBe("Bearer");
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid owner" });
   });
 
-  it("rejects an incorrect bearer token for diary entries", async () => {
+  it("rejects an invalid invite identity for diary entries", async () => {
     const response = await api("/api/entries", {
-      headers: { authorization: "Bearer wrong-token" },
+      headers: { "x-diary-owner": "x" },
     });
 
-    expect(response.status).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid owner" });
   });
 
-  it("requires a bearer token for AI analysis", async () => {
+  it("requires an invite identity for AI analysis", async () => {
     const response = await api("/api/analyze", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ content: "今天有点累", mood: "tired" }),
     });
 
-    expect(response.status).toBe(401);
-    expect(response.headers.get("www-authenticate")).toBe("Bearer");
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid owner" });
   });
 
   it("validates AI analysis input", async () => {
     const response = await api("/api/analyze", {
       method: "POST",
-      headers: { ...authHeaders, "content-type": "application/json" },
+      headers: { ...ownerHeaders, "content-type": "application/json" },
       body: JSON.stringify({ content: " ", mood: "sparkly" }),
     });
 
@@ -150,7 +153,7 @@ describe("diary entries API", () => {
 
     const response = await api("/api/analyze", {
       method: "POST",
-      headers: { ...authHeaders, "content-type": "application/json" },
+      headers: { ...ownerHeaders, "content-type": "application/json" },
       body: JSON.stringify({ content: "今天累到只想好好休息", mood: "tired" }),
     });
 
@@ -200,7 +203,7 @@ describe("diary entries API", () => {
   it("creates a valid entry with a UUID and camelCase fields", async () => {
     const response = await api("/api/entries", {
       method: "POST",
-      headers: { ...authHeaders, "content-type": "application/json" },
+      headers: { ...ownerHeaders, "content-type": "application/json" },
       body: JSON.stringify(validInput),
     });
 
@@ -225,8 +228,8 @@ describe("diary entries API", () => {
   it("lists only the 50 newest entries in descending creation order", async () => {
     const insert = env.DB.prepare(
       `INSERT INTO entries
-        (id, content, mood, intensity, ai_response, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (id, owner_id, content, mood, intensity, ai_response, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const entries = Array.from({ length: 51 }, (_, index) => {
       const id = `entry-${index.toString().padStart(2, "0")}`;
@@ -235,6 +238,7 @@ describe("diary entries API", () => {
       ).toISOString();
       return insert.bind(
         id,
+        "friend-a",
         `日记 ${index}`,
         "calm",
         3,
@@ -245,7 +249,7 @@ describe("diary entries API", () => {
     });
     await env.DB.batch(entries);
 
-    const response = await api("/api/entries", withAuth());
+    const response = await api("/api/entries", withOwner());
 
     expect(response.status).toBe(200);
     const body = await response.json<Array<Record<string, unknown>>>();
@@ -256,6 +260,29 @@ describe("diary entries API", () => {
         (_, index) => `entry-${(50 - index).toString().padStart(2, "0")}`,
       ),
     );
+  });
+
+  it("isolates entries by invite identity", async () => {
+    const createFor = async (ownerId: string, content: string) => {
+      const response = await api("/api/entries", withOwner({
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...validInput, content }),
+      }, ownerId));
+      expect(response.status).toBe(201);
+      return response.json<Record<string, unknown>>();
+    };
+
+    const friendA = await createFor("friend-a", "朋友 A 的日记");
+    const friendB = await createFor("friend-b", "朋友 B 的日记");
+
+    const response = await api("/api/entries", withOwner({}, "friend-a"));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual([friendA]);
+
+    const hidden = await api(`/api/entries/${friendB.id}`, withOwner({}, "friend-a"));
+    expect(hidden.status).toBe(404);
   });
 
   it.each([
@@ -280,7 +307,7 @@ describe("diary entries API", () => {
   ])("accepts valid boundaries: %s", async (_name, body) => {
     const response = await api("/api/entries", {
       method: "POST",
-      headers: { ...authHeaders, "content-type": "application/json" },
+      headers: { ...ownerHeaders, "content-type": "application/json" },
       body: JSON.stringify(body),
     });
 
@@ -291,7 +318,7 @@ describe("diary entries API", () => {
   it("gets a single entry", async () => {
     const entry = await createEntry();
 
-    const response = await api(`/api/entries/${entry.id}`, withAuth());
+    const response = await api(`/api/entries/${entry.id}`, withOwner());
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(entry);
@@ -302,7 +329,7 @@ describe("diary entries API", () => {
 
     const response = await api(`/api/entries/${entry.id}`, {
       method: "PUT",
-      headers: { ...authHeaders, "content-type": "application/json" },
+      headers: { ...ownerHeaders, "content-type": "application/json" },
       body: JSON.stringify({
         content: "  修改后的正文  ",
         mood: "happy",
@@ -331,12 +358,12 @@ describe("diary entries API", () => {
 
     const removed = await api(`/api/entries/${entry.id}`, {
       method: "DELETE",
-      headers: authHeaders,
+      headers: ownerHeaders,
     });
     expect(removed.status).toBe(204);
     expect(await removed.text()).toBe("");
 
-    const missing = await api(`/api/entries/${entry.id}`, withAuth());
+    const missing = await api(`/api/entries/${entry.id}`, withOwner());
     expect(missing.status).toBe(404);
     expect(await missing.json()).toEqual({ error: "Not found" });
   });
@@ -368,7 +395,7 @@ describe("diary entries API", () => {
     ) => {
       const response = await api("/api/entries", {
         method: "POST",
-        headers: { ...authHeaders, "content-type": "application/json" },
+        headers: { ...ownerHeaders, "content-type": "application/json" },
         body: JSON.stringify(body),
       });
 
@@ -380,7 +407,7 @@ describe("diary entries API", () => {
   it("returns 400 rather than 500 for malformed JSON", async () => {
     const response = await api("/api/entries", {
       method: "POST",
-      headers: { ...authHeaders, "content-type": "application/json" },
+      headers: { ...ownerHeaders, "content-type": "application/json" },
       body: "{",
     });
 
@@ -389,7 +416,7 @@ describe("diary entries API", () => {
   });
 
   it("returns 404 for missing entries", async () => {
-    const response = await api("/api/entries/missing", withAuth());
+    const response = await api("/api/entries/missing", withOwner());
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: "Not found" });
@@ -406,7 +433,7 @@ describe("diary entries API", () => {
     async (method: string, path: string) => {
       const response = await api(
         path,
-        path.startsWith("/api/entries") ? withAuth({ method }) : { method },
+        path.startsWith("/api/entries") ? withOwner({ method }) : { method },
       );
 
       expect(response.status).toBe(405);

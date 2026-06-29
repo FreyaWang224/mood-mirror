@@ -2204,18 +2204,18 @@
         </span>
       </div>
 
-      <section class="access-token-panel" id="accessTokenPanel" aria-label="日记访问口令">
-        <button class="token-toggle" id="tokenToggle" type="button" aria-expanded="false" aria-controls="tokenForm">
+      <section class="access-token-panel" id="ownerIdPanel" aria-label="试用身份">
+        <button class="token-toggle" id="ownerToggle" type="button" aria-expanded="false" aria-controls="ownerForm">
           <span class="token-dot" id="tokenDot" aria-hidden="true"></span>
-          <span id="tokenToggleLabel">访问口令</span>
+          <span id="ownerToggleLabel">试用身份</span>
         </button>
-        <form class="token-form" id="tokenForm" hidden>
-          <label class="token-label" for="accessTokenInput">日记访问口令</label>
+        <form class="token-form" id="ownerForm" hidden>
+          <label class="token-label" for="ownerIdInput">你的试用名字 / 邀请码</label>
           <div class="token-row">
-            <input id="accessTokenInput" type="password" autocomplete="current-password" placeholder="输入口令后可读取和保存">
-            <button class="token-save" id="saveAccessTokenBtn" type="submit">连接</button>
+            <input id="ownerIdInput" type="text" autocomplete="nickname" inputmode="text" placeholder="例如 freya 或 friend01">
+            <button class="token-save" id="saveOwnerIdBtn" type="submit">进入</button>
           </div>
-          <p class="token-status" id="accessTokenStatus" role="status">口令仅保存在当前浏览器会话中。</p>
+          <p class="token-status" id="ownerIdStatus" role="status">这个名字只用于分开保存不同人的日记。</p>
         </form>
       </section>
 
@@ -2575,57 +2575,66 @@
     let latestEntry = null;
     let historyCache = [];
 
-    const accessTokenStorageKey = "diaryAccessToken";
-    function getAccessToken() {
+    const ownerIdStorageKey = "diaryOwnerId";
+    function normalizeOwnerId(value) {
+      return value.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+    }
+
+    function isValidOwnerId(value) {
+      return /^[a-z0-9][a-z0-9_-]{1,39}$/.test(value);
+    }
+
+    function getOwnerId() {
       try {
-        return sessionStorage.getItem(accessTokenStorageKey) || "";
+        return localStorage.getItem(ownerIdStorageKey) || "";
       } catch (error) {
         return "";
       }
     }
-    function setAccessToken(value) {
+    function setOwnerId(value) {
       try {
         if (value) {
-          sessionStorage.setItem(accessTokenStorageKey, value);
+          localStorage.setItem(ownerIdStorageKey, value);
         } else {
-          sessionStorage.removeItem(accessTokenStorageKey);
+          localStorage.removeItem(ownerIdStorageKey);
         }
       } catch (error) {
         /* ignore */
       }
     }
-    function authHeaders(extra = {}) {
-      return { ...extra, authorization: `Bearer ${getAccessToken()}` };
+    function ownerHeaders(extra = {}) {
+      return { ...extra, "x-diary-owner": getOwnerId() };
     }
 
-    function updateAccessTokenUi(message) {
-      const panel = document.querySelector("#accessTokenPanel");
-      const status = document.querySelector("#accessTokenStatus");
-      const label = document.querySelector("#tokenToggleLabel");
-      const connected = Boolean(getAccessToken());
+    function updateOwnerIdUi(message) {
+      const panel = document.querySelector("#ownerIdPanel");
+      const status = document.querySelector("#ownerIdStatus");
+      const label = document.querySelector("#ownerToggleLabel");
+      const ownerId = getOwnerId();
+      const connected = Boolean(ownerId);
       if (panel) {
         panel.dataset.connected = String(connected);
       }
       if (label) {
-        label.textContent = connected ? "已连接" : "访问口令";
+        label.textContent = connected ? ownerId : "试用身份";
       }
       if (status && typeof message === "string") {
         status.textContent = message;
       }
     }
 
-    function initAccessTokenPanel() {
-      const toggle = document.querySelector("#tokenToggle");
-      const form = document.querySelector("#tokenForm");
-      const input = document.querySelector("#accessTokenInput");
+    function initOwnerIdPanel() {
+      const toggle = document.querySelector("#ownerToggle");
+      const form = document.querySelector("#ownerForm");
+      const input = document.querySelector("#ownerIdInput");
       if (!toggle || !form || !input) {
         return;
       }
 
-      if (getAccessToken()) {
-        input.value = getAccessToken();
+      if (getOwnerId()) {
+        input.value = getOwnerId();
       }
-      updateAccessTokenUi();
+      updateOwnerIdUi();
 
       toggle.addEventListener("click", () => {
         const open = form.hasAttribute("hidden");
@@ -2640,13 +2649,14 @@
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
-        const value = input.value.trim();
-        if (!value) {
-          updateAccessTokenUi("请先输入日记访问口令。");
+        const value = normalizeOwnerId(input.value);
+        if (!isValidOwnerId(value)) {
+          updateOwnerIdUi("请输入至少 2 位，只包含英文、数字、- 或 _ 的试用名字。");
           return;
         }
-        setAccessToken(value);
-        updateAccessTokenUi("正在连接……");
+        setOwnerId(value);
+        input.value = value;
+        updateOwnerIdUi("正在读取属于你的情绪星球……");
         loadHistory();
       });
     }
@@ -2872,17 +2882,16 @@
     async function analyzeEntry(entry) {
       const response = await fetch("/api/analyze", {
         method: "POST",
-        headers: authHeaders({ "content-type": "application/json" }),
+        headers: ownerHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           content: entry.diary,
           mood: entry.mood
         })
       });
 
-      if (response.status === 401) {
-        setAccessToken("");
-        updateAccessTokenUi("访问口令不正确，请重新输入。");
-        throw new Error("unauthorized");
+      if (response.status === 400) {
+        updateOwnerIdUi("请先设置有效的试用身份。");
+        throw new Error("invalid-owner");
       }
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -2892,18 +2901,17 @@
     }
 
     async function loadHistory() {
-      if (!getAccessToken()) {
+      if (!getOwnerId()) {
         historyCache = [];
         renderGarden();
         renderHistoryMap();
         return;
       }
       try {
-        const response = await fetch("/api/entries", { headers: authHeaders() });
-        if (response.status === 401) {
-          setAccessToken("");
+        const response = await fetch("/api/entries", { headers: ownerHeaders() });
+        if (response.status === 400) {
           historyCache = [];
-          updateAccessTokenUi("访问口令不正确，请重新输入。");
+          updateOwnerIdUi("请先设置有效的试用身份。");
           renderGarden();
           renderHistoryMap();
           return;
@@ -2913,7 +2921,7 @@
         }
         const rows = await response.json();
         historyCache = migrateHistory(Array.isArray(rows) ? rows.map(mapApiEntry) : []);
-        updateAccessTokenUi("已连接到你的情绪宇宙。");
+        updateOwnerIdUi("已进入你的情绪星球。");
       } catch (error) {
         showToast("暂时无法读取你的星球，请稍后再试。");
       }
@@ -3248,9 +3256,9 @@
         return;
       }
 
-      if (!getAccessToken()) {
-        showToast("请先在右上角输入访问口令，再收藏星球。");
-        updateAccessTokenUi("请先输入日记访问口令。");
+      if (!getOwnerId()) {
+        showToast("请先在右上角设置试用身份，再收藏星球。");
+        updateOwnerIdUi("请先输入你的试用名字。");
         return;
       }
 
@@ -3260,7 +3268,7 @@
       try {
         const response = await fetch("/api/entries", {
           method: "POST",
-          headers: authHeaders({ "content-type": "application/json" }),
+          headers: ownerHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({
             content: latestEntry.diary,
             mood: latestEntry.mood,
@@ -3269,10 +3277,9 @@
           })
         });
 
-        if (response.status === 401) {
-          setAccessToken("");
-          updateAccessTokenUi("访问口令不正确，请重新输入。");
-          throw new Error("unauthorized");
+        if (response.status === 400) {
+          updateOwnerIdUi("请先设置有效的试用身份。");
+          throw new Error("invalid-owner");
         }
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -3347,9 +3354,9 @@
         return;
       }
 
-      if (!getAccessToken()) {
-        showToast("请先在右上角输入访问口令，再生成共鸣星球。");
-        updateAccessTokenUi("请先输入日记访问口令。");
+      if (!getOwnerId()) {
+        showToast("请先在右上角设置试用身份，再生成共鸣星球。");
+        updateOwnerIdUi("请先输入你的试用名字。");
         return;
       }
 
@@ -3470,7 +3477,7 @@
     }, 1000);
 
     setAppState("home-idle");
-    initAccessTokenPanel();
+    initOwnerIdPanel();
     loadHistory();
   </script>
 </body>

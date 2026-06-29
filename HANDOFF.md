@@ -18,9 +18,9 @@ Updated: 2026-06-27
   └─ /api/* → Cloudflare Worker (src/) → D1 (emotion-diary-db)
 ```
 
-- 鉴权：所有 `/api/entries*` 需要 `Authorization: Bearer <DIARY_ACCESS_TOKEN>`。
-- `DIARY_ACCESS_TOKEN` 是 Cloudflare 密钥（生产用 `wrangler secret put` 设置；本地在 `.dev.vars`，两者可不同）。
-- Entry 数据模型：`{ id, content, mood, intensity(1-5), aiResponse, createdAt, updatedAt }`，mood ∈ happy/calm/anxious/sad/tired/angry。
+- 试用身份隔离：`/api/analyze` 和 `/api/entries*` 需要 `X-Diary-Owner`，格式为 2-40 位小写英文/数字/`-`/`_`。
+- 这不是正式登录系统。邀请码被转发后，同一个邀请码仍会进入同一个空间。
+- Entry 数据模型：`{ id, ownerId, content, mood, intensity(1-5), aiResponse, createdAt, updatedAt }`，mood ∈ happy/calm/anxious/sad/tired/angry。
 
 ## ⚠️ 关键：改哪个文件
 
@@ -28,16 +28,16 @@ Updated: 2026-06-27
 
 | 文件 | 作用 | 持久化 |
 |---|---|---|
-| **`public/index.html`** | **线上部署的正式应用**。改这里才会影响线上。 | 云端（Worker API + D1）+ 访问口令面板 |
-| `.worktrees/emotion-planet-prototype/ai-emotion-diary-prototype.html` | 独立 UI 原型（在 `feat/emotion-planet-prototype` 分支迭代用） | 仅 localStorage，无口令 |
+| **`public/index.html`** | **线上部署的正式应用**。改这里才会影响线上。 | 云端（Worker API + D1）+ 试用身份面板 |
+| `.worktrees/emotion-planet-prototype/ai-emotion-diary-prototype.html` | 独立 UI 原型（在 `feat/emotion-planet-prototype` 分支迭代用） | 仅 localStorage |
 
 两者 UI/CSS 几乎相同；`public/index.html` 在此基础上**额外**接了后端：
-- 访问口令面板（`#accessTokenPanel`，token 存 `sessionStorage["diaryAccessToken"]`）。
-- `loadHistory()` GET `/api/entries`；`saveLatestEntry()` POST `{content, mood, intensity:3, aiResponse}`；都处理 401（清 token）。
+- 试用身份面板（`#ownerIdPanel`，owner id 存 `localStorage["diaryOwnerId"]`）。
+- `loadHistory()` GET `/api/entries`；`saveLatestEntry()` POST `{content, mood, intensity:3, aiResponse}`；请求都带 `X-Diary-Owner`。
 - `mapApiEntry()` 把 API 行（content/mood/createdAt）映射成原型 entry，再走 `migrateHistory()` 补全 mood 派生字段。
 - 渲染一律用 `textContent`（无 innerHTML，防 XSS）。
 
-**改线上 UI**：直接改 `public/index.html`。如果在 worktree 原型里改了想同步到线上，需要把改动手工搬进 `public/index.html` 并保留上面的后端接线（不能整文件覆盖，否则会丢掉口令/API 逻辑）。
+**改线上 UI**：直接改 `public/index.html`。如果在 worktree 原型里改了想同步到线上，需要把改动手工搬进 `public/index.html` 并保留上面的后端接线（不能整文件覆盖，否则会丢掉试用身份/API 逻辑）。
 
 ## 场景与素材
 
@@ -53,7 +53,7 @@ npm run dev       # wrangler dev：本地完整环境(Worker+D1+assets)，默认
 npm run deploy    # 部署到 Cloudflare
 ```
 
-本次上线已端到端验证：输入口令 → 保存 → 从 D1 读历史渲染，全部正常。
+本次上线已端到端验证：输入试用身份 → 保存 → 从 D1 按 owner 读历史渲染，全部正常。
 
 ## 下一步建议
 
@@ -65,5 +65,5 @@ npm run deploy    # 部署到 Cloudflare
 ## 不在当前范围
 
 - 真实 AI 分析（当前分析文案由 mood 静态映射，存在 `moodProfiles`）。
-- 多用户/登录（目前是单口令访问）。
+- 正式多用户登录（目前是轻量试用身份隔离）。
 </content>

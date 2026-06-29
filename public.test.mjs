@@ -52,19 +52,18 @@ for (const asset of [
 // Cloud persistence: history and saving go through the Worker API, not the browser.
 assert.match(html, /async function loadHistory\s*\(/);
 assert.match(html, /async function saveLatestEntry\s*\(/);
-assert.match(html, /function getAccessToken\s*\(/);
-assert.match(html, /id=["']accessTokenInput["']/);
-assert.match(html, /id=["']saveAccessTokenBtn["']/);
-assert.match(html, /sessionStorage\.getItem\(accessTokenStorageKey\)/);
-assert.match(html, /sessionStorage\.setItem\(accessTokenStorageKey/);
-assert.match(html, /sessionStorage\.removeItem\(accessTokenStorageKey\)/);
-assert.ok(!html.includes("window.prompt"), "Access token entry must work without browser prompt support.");
+assert.match(html, /function getOwnerId\s*\(/);
+assert.match(html, /id=["']ownerIdInput["']/);
+assert.match(html, /id=["']saveOwnerIdBtn["']/);
+assert.match(html, /localStorage\.getItem\(ownerIdStorageKey\)/);
+assert.match(html, /localStorage\.setItem\(ownerIdStorageKey/);
+assert.ok(!html.includes("window.prompt"), "Invite identity entry must work without browser prompt support.");
 
 assert.match(html, /fetch\(["']\/api\/entries["']/);
 assert.match(html, /fetch\(["']\/api\/analyze["']/);
-assert.match(html, /authorization:\s*`Bearer \$\{getAccessToken\(\)\}`/);
+assert.match(html, /"x-diary-owner":\s*getOwnerId\(\)/);
 assert.match(html, /response\.ok/);
-assert.match(html, /response\.status\s*===\s*401/);
+assert.ok(!html.includes("authorization:"), "Friend trial mode should not send a shared bearer token.");
 
 // POST shape must match the Worker entry contract.
 assert.match(
@@ -120,17 +119,21 @@ assert.ok(
   "DeepSeek secrets must never appear in browser HTML.",
 );
 assert.ok(
+  !html.includes("DIARY_ACCESS_TOKEN"),
+  "The deployed page should not mention the retired shared diary password.",
+);
+assert.ok(
   quotesSource.includes("quoteLibrary") &&
     quotesSource.includes("人时已尽，人世还长，我在中间，应该休息。") &&
     quotesSource.includes("priorityTags"),
   "The backend should keep the curated quote library and mood priority tags.",
 );
 
-// On 401 the stored token is cleared and a visible Chinese message is shown.
-assert.match(html, /setAccessToken\(""\)/);
+// Missing or invalid trial identity shows visible Chinese guidance.
+assert.match(html, /function initOwnerIdPanel\s*\(/);
 assert.ok(
-  html.includes("访问口令不正确，请重新输入。"),
-  "Expected a visible Chinese access-token failure message.",
+  html.includes("请先设置有效的试用身份。"),
+  "Expected a visible Chinese owner identity failure message.",
 );
 assert.ok(
   html.includes("暂时无法保存这颗星球，请保留页面后再试一次。"),
@@ -141,14 +144,16 @@ assert.ok(
   "Expected a visible Chinese history loading failure message.",
 );
 
-// Entries are never persisted in the browser.
+// Entries are never persisted in the browser; localStorage is only for the
+// lightweight trial identity.
 assert.ok(
-  !html.includes("localStorage.setItem"),
-  "Deployed page must not save entries to localStorage.",
+  !html.includes(`localStorage.setItem(storageKey`) &&
+    !html.includes(`localStorage.setItem(legacyStorageKey`),
+  "Deployed page must not save entries to localStorage history keys.",
 );
 assert.ok(
-  !html.includes("localStorage.removeItem"),
-  "Deployed page must not clear entries from localStorage.",
+  html.includes("diaryOwnerId"),
+  "Friend trial identity may be stored locally so returning testers keep their own space.",
 );
 
 // User-controlled fields must never reach innerHTML (XSS-safe rendering).
